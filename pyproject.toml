@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mystock"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "psycopg2-binary",
+    "python-dotenv",
+    "pgvector",
+    "jugaad-data",
+    "yfinance",
+    "requests",
+    "feedparser",
+    "openpyxl",
+    "mcp",
+    "sentence-transformers",
+    "transformers",
+    "torch",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
