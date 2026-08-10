@@ -6,9 +6,8 @@ Last updated: 2026-08-08
 
 **Data pipeline** — Staging (raw, schema-on-read JSONB) → Main (star schema: dimensions +
 facts) for NSE equity prices/volume/delivery (10-year history, 3,241 symbols), company
-fundamentals (750 symbols, NIFTY Total Market), index snapshots, and news. Equities/ETFs
-only — mutual funds are deliberately out of scope, see below. 8 automated data-quality
-checks logged on every run (`metadata.data_quality`), plus full run tracking
+fundamentals (750 symbols, NIFTY Total Market), index snapshots, and news. 8 automated
+data-quality checks logged on every run (`metadata.data_quality`), plus full run tracking
 (`metadata.etl_runs`).
 
 **Quality Score** — 8-category weighted score (0–100) per stock: Business Quality,
@@ -63,11 +62,6 @@ all-MiniLM-L6-v2) for semantic search via `search_docs` — no cloud embedding A
 
 ## Not built (out of scope for now)
 
-- **Mutual fund tracking** — removed on 2026-08-08 (was built and working: AMFI NAV
-  pipeline, MF holdings, MF cost modeling). Deliberate scope cut, not a regression — a
-  fund manager already does the active-management job for MFs, so mystock's
-  quality-scoring/signal machinery doesn't add much there. Will live in a separate,
-  purpose-built app if/when needed. See `MYSTOCK_PRODUCT_SPEC.md` §4.
 - Any UI beyond SQL/chat (dashboards are an explicit non-goal — see
   `MYSTOCK_PRODUCT_SPEC.md` §4).
 - F&O (futures & options) tracking.

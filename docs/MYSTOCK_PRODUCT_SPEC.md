@@ -15,10 +15,6 @@ performance, brokerage/tax costs, and news sentiment — queryable in plain SQL 
 with no dashboard to maintain and no manual spreadsheet to update. A daily digest answers
 "does anything need my attention today" without checking multiple tables by hand.
 
-Mutual funds are deliberately out of scope (see §4 Non-Goals) — a fund manager is already
-doing the active-management job there, so this system's own quality-scoring/signal
-machinery adds little; MF tracking, if wanted, belongs in a separate, purpose-built app.
-
 **Primary use case:** find multibagger candidates (small/mid-cap stocks with strong quality +
 growth + still-reasonable valuation), track what's actually been invested, and know the real
 cost of buying/selling.
@@ -113,11 +109,6 @@ so nothing runs until you actually have a new statement to bring in (see Design 
   streaming/live-tick pipeline.
 - **Bond/NCD tracking.** Out of scope for now; flagged as a known gap when it shows up in
   imported broker holdings, not silently dropped.
-- **Mutual funds.** Removed from scope on 2026-08-08 (was built and working in an earlier
-  version — AMFI/mfapi.in NAV pipeline, MF holdings tracking — but deliberately dropped, not
-  an oversight). A fund manager is already doing MF's active-management job, so this
-  system's stock-specific quality-scoring/signal machinery doesn't add much there; MF
-  tracking belongs in a separate, purpose-built app instead.
 
 ## 5. Architecture
 
@@ -463,18 +454,12 @@ The pattern worth noticing: every "Built" row exists *because* something real br
 
 ## 17. Version History & Roadmap
 
-**v1.0 (2026-08-04)** — everything in §1-§16: prices/fundamentals/MF pipeline, Quality
+**v1.0 (2026-08-04)** — everything in §1-§16: prices/fundamentals pipeline, Quality
 Score (8 categories, 30+ sub-metrics), portfolio tracking with real imported holdings,
 multibagger screener, news sentiment + stock/sector signals, daily alert digest, broker
-and MF cost modeling, MCP server, local-first RAG + FinBERT. Everything described as
+cost modeling, MCP server, local-first RAG + FinBERT. Everything described as
 "built" in this document is built and was verified against the live database while
 writing it — v1 is a snapshot of reality, not a plan.
-
-**v1.1 (2026-08-08)** — mutual fund tracking removed entirely (AMFI/mfapi.in NAV
-pipeline, `staging`/`main`/`portfolio` MF tables, MF cost modeling, MF portions of
-holdings import) — a deliberate scope cut, not a regression, to keep the system focused
-on equities/ETFs where its quality-scoring/signal machinery actually adds value over a
-fund manager's own active management. See §4 Non-Goals.
 
 **v2 (proposed, not started)** — a dedicated **Research Engine**: the shift from "track
 what I own" to "research what I might buy." Assessed by real feasibility, not just
