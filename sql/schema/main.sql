@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict T5cODfGpL8BxdQ9vzu85sAQigXEN3ofmW0z2uOfpsetXMDIt9KaTgC1JzgggDht
+\restrict tVrh9OGneAk4gB8ow1d4W9Qlq7dPCf6eQ7pc3GA22MW286JniZc1g7NvwCYlPce
 
 -- Dumped from database version 18.4 (Homebrew)
 -- Dumped by pg_dump version 18.4 (Homebrew)
@@ -121,46 +121,6 @@ ALTER SEQUENCE main.dim_index_index_key_seq OWNER TO raj;
 --
 
 ALTER SEQUENCE main.dim_index_index_key_seq OWNED BY main.dim_index.index_key;
-
-
---
--- Name: dim_mf_scheme; Type: TABLE; Schema: main; Owner: raj
---
-
-CREATE TABLE main.dim_mf_scheme (
-    scheme_key integer NOT NULL,
-    scheme_code bigint NOT NULL,
-    scheme_name text,
-    fund_house text,
-    scheme_type text,
-    scheme_category text,
-    isin_growth text,
-    is_active boolean DEFAULT true NOT NULL
-);
-
-
-ALTER TABLE main.dim_mf_scheme OWNER TO raj;
-
---
--- Name: dim_mf_scheme_scheme_key_seq; Type: SEQUENCE; Schema: main; Owner: raj
---
-
-CREATE SEQUENCE main.dim_mf_scheme_scheme_key_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER SEQUENCE main.dim_mf_scheme_scheme_key_seq OWNER TO raj;
-
---
--- Name: dim_mf_scheme_scheme_key_seq; Type: SEQUENCE OWNED BY; Schema: main; Owner: raj
---
-
-ALTER SEQUENCE main.dim_mf_scheme_scheme_key_seq OWNED BY main.dim_mf_scheme.scheme_key;
 
 
 --
@@ -404,19 +364,6 @@ CREATE TABLE main.fact_index_daily (
 ALTER TABLE main.fact_index_daily OWNER TO raj;
 
 --
--- Name: fact_mf_nav_daily; Type: TABLE; Schema: main; Owner: raj
---
-
-CREATE TABLE main.fact_mf_nav_daily (
-    scheme_key integer NOT NULL,
-    date_key integer NOT NULL,
-    nav numeric(14,4)
-);
-
-
-ALTER TABLE main.fact_mf_nav_daily OWNER TO raj;
-
---
 -- Name: fact_news_sentiment_daily; Type: TABLE; Schema: main; Owner: raj
 --
 
@@ -585,13 +532,6 @@ ALTER TABLE ONLY main.dim_index ALTER COLUMN index_key SET DEFAULT nextval('main
 
 
 --
--- Name: dim_mf_scheme scheme_key; Type: DEFAULT; Schema: main; Owner: raj
---
-
-ALTER TABLE ONLY main.dim_mf_scheme ALTER COLUMN scheme_key SET DEFAULT nextval('main.dim_mf_scheme_scheme_key_seq'::regclass);
-
-
---
 -- Name: dim_option_contract contract_key; Type: DEFAULT; Schema: main; Owner: raj
 --
 
@@ -658,22 +598,6 @@ ALTER TABLE ONLY main.dim_index
 
 ALTER TABLE ONLY main.dim_index
     ADD CONSTRAINT dim_index_pkey PRIMARY KEY (index_key);
-
-
---
--- Name: dim_mf_scheme dim_mf_scheme_pkey; Type: CONSTRAINT; Schema: main; Owner: raj
---
-
-ALTER TABLE ONLY main.dim_mf_scheme
-    ADD CONSTRAINT dim_mf_scheme_pkey PRIMARY KEY (scheme_key);
-
-
---
--- Name: dim_mf_scheme dim_mf_scheme_scheme_code_key; Type: CONSTRAINT; Schema: main; Owner: raj
---
-
-ALTER TABLE ONLY main.dim_mf_scheme
-    ADD CONSTRAINT dim_mf_scheme_scheme_code_key UNIQUE (scheme_code);
 
 
 --
@@ -773,14 +697,6 @@ ALTER TABLE ONLY main.fact_index_daily
 
 
 --
--- Name: fact_mf_nav_daily fact_mf_nav_daily_pkey; Type: CONSTRAINT; Schema: main; Owner: raj
---
-
-ALTER TABLE ONLY main.fact_mf_nav_daily
-    ADD CONSTRAINT fact_mf_nav_daily_pkey PRIMARY KEY (scheme_key, date_key);
-
-
---
 -- Name: fact_news_sentiment_daily fact_news_sentiment_daily_pkey; Type: CONSTRAINT; Schema: main; Owner: raj
 --
 
@@ -855,13 +771,6 @@ CREATE INDEX ix_fact_delivery_date ON main.fact_delivery USING btree (date_key);
 --
 
 CREATE INDEX ix_fact_index_daily_date ON main.fact_index_daily USING btree (date_key);
-
-
---
--- Name: ix_fact_mf_nav_daily_date; Type: INDEX; Schema: main; Owner: raj
---
-
-CREATE INDEX ix_fact_mf_nav_daily_date ON main.fact_mf_nav_daily USING btree (date_key);
 
 
 --
@@ -1020,22 +929,6 @@ ALTER TABLE ONLY main.fact_index_daily
 
 
 --
--- Name: fact_mf_nav_daily fact_mf_nav_daily_date_key_fkey; Type: FK CONSTRAINT; Schema: main; Owner: raj
---
-
-ALTER TABLE ONLY main.fact_mf_nav_daily
-    ADD CONSTRAINT fact_mf_nav_daily_date_key_fkey FOREIGN KEY (date_key) REFERENCES main.dim_date(date_key);
-
-
---
--- Name: fact_mf_nav_daily fact_mf_nav_daily_scheme_key_fkey; Type: FK CONSTRAINT; Schema: main; Owner: raj
---
-
-ALTER TABLE ONLY main.fact_mf_nav_daily
-    ADD CONSTRAINT fact_mf_nav_daily_scheme_key_fkey FOREIGN KEY (scheme_key) REFERENCES main.dim_mf_scheme(scheme_key);
-
-
---
 -- Name: fact_news_sentiment_daily fact_news_sentiment_daily_date_key_fkey; Type: FK CONSTRAINT; Schema: main; Owner: raj
 --
 
@@ -1164,8 +1057,155 @@ ALTER TABLE ONLY main.fact_volume
 
 
 --
+-- Name: SCHEMA main; Type: ACL; Schema: -; Owner: raj
+--
+
+GRANT USAGE ON SCHEMA main TO mcp_reader;
+
+
+--
+-- Name: TABLE dim_date; Type: ACL; Schema: main; Owner: raj
+--
+
+GRANT SELECT ON TABLE main.dim_date TO mcp_reader;
+
+
+--
+-- Name: TABLE dim_exchange; Type: ACL; Schema: main; Owner: raj
+--
+
+GRANT SELECT ON TABLE main.dim_exchange TO mcp_reader;
+
+
+--
+-- Name: TABLE dim_index; Type: ACL; Schema: main; Owner: raj
+--
+
+GRANT SELECT ON TABLE main.dim_index TO mcp_reader;
+
+
+--
+-- Name: TABLE dim_option_contract; Type: ACL; Schema: main; Owner: raj
+--
+
+GRANT SELECT ON TABLE main.dim_option_contract TO mcp_reader;
+
+
+--
+-- Name: TABLE dim_sector; Type: ACL; Schema: main; Owner: raj
+--
+
+GRANT SELECT ON TABLE main.dim_sector TO mcp_reader;
+
+
+--
+-- Name: TABLE dim_security; Type: ACL; Schema: main; Owner: raj
+--
+
+GRANT SELECT ON TABLE main.dim_security TO mcp_reader;
+
+
+--
+-- Name: TABLE fact_company_dividends; Type: ACL; Schema: main; Owner: raj
+--
+
+GRANT SELECT ON TABLE main.fact_company_dividends TO mcp_reader;
+
+
+--
+-- Name: TABLE fact_company_financials; Type: ACL; Schema: main; Owner: raj
+--
+
+GRANT SELECT ON TABLE main.fact_company_financials TO mcp_reader;
+
+
+--
+-- Name: TABLE fact_company_fundamentals; Type: ACL; Schema: main; Owner: raj
+--
+
+GRANT SELECT ON TABLE main.fact_company_fundamentals TO mcp_reader;
+
+
+--
+-- Name: TABLE fact_daily_prices; Type: ACL; Schema: main; Owner: raj
+--
+
+GRANT SELECT ON TABLE main.fact_daily_prices TO mcp_reader;
+
+
+--
+-- Name: TABLE fact_delivery; Type: ACL; Schema: main; Owner: raj
+--
+
+GRANT SELECT ON TABLE main.fact_delivery TO mcp_reader;
+
+
+--
+-- Name: TABLE fact_index_daily; Type: ACL; Schema: main; Owner: raj
+--
+
+GRANT SELECT ON TABLE main.fact_index_daily TO mcp_reader;
+
+
+--
+-- Name: TABLE fact_news_sentiment_daily; Type: ACL; Schema: main; Owner: raj
+--
+
+GRANT SELECT ON TABLE main.fact_news_sentiment_daily TO mcp_reader;
+
+
+--
+-- Name: TABLE fact_options_daily; Type: ACL; Schema: main; Owner: raj
+--
+
+GRANT SELECT ON TABLE main.fact_options_daily TO mcp_reader;
+
+
+--
+-- Name: TABLE fact_price_sentiment_signal; Type: ACL; Schema: main; Owner: raj
+--
+
+GRANT SELECT ON TABLE main.fact_price_sentiment_signal TO mcp_reader;
+
+
+--
+-- Name: TABLE fact_sector_signal; Type: ACL; Schema: main; Owner: raj
+--
+
+GRANT SELECT ON TABLE main.fact_sector_signal TO mcp_reader;
+
+
+--
+-- Name: TABLE fact_stock_quality_metric; Type: ACL; Schema: main; Owner: raj
+--
+
+GRANT SELECT ON TABLE main.fact_stock_quality_metric TO mcp_reader;
+
+
+--
+-- Name: TABLE fact_stock_quality_score; Type: ACL; Schema: main; Owner: raj
+--
+
+GRANT SELECT ON TABLE main.fact_stock_quality_score TO mcp_reader;
+
+
+--
+-- Name: TABLE fact_volume; Type: ACL; Schema: main; Owner: raj
+--
+
+GRANT SELECT ON TABLE main.fact_volume TO mcp_reader;
+
+
+--
+-- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: main; Owner: raj
+--
+
+ALTER DEFAULT PRIVILEGES FOR ROLE raj IN SCHEMA main GRANT SELECT ON TABLES TO mcp_reader;
+
+
+--
 -- PostgreSQL database dump complete
 --
 
-\unrestrict T5cODfGpL8BxdQ9vzu85sAQigXEN3ofmW0z2uOfpsetXMDIt9KaTgC1JzgggDht
+\unrestrict tVrh9OGneAk4gB8ow1d4W9Qlq7dPCf6eQ7pc3GA22MW286JniZc1g7NvwCYlPce
 

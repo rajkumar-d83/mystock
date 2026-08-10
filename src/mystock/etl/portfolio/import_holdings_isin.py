@@ -1,14 +1,12 @@
-"""Imports a broker holdings export keyed by ISIN (Upstox-style: 'HOLDING_MYSQL' /
-'MF_HOLDING_MYSQL' sheets with columns ISIN, Scrip Name, Current Qty, ..., Rate,
-Valuation) as OPENING_BALANCE transactions — one per holding, dated as of the report's
-"Value Date" column (or --as-of if that's missing), using the broker's own reported
-average rate as cost basis. This is a snapshot, not real trade history, which is why it
-lands as OPENING_BALANCE rather than BUY.
+"""Imports a broker holdings export keyed by ISIN (Upstox-style: 'HOLDING_MYSQL' sheet
+with columns ISIN, Scrip Name, Current Qty, ..., Rate, Valuation) as OPENING_BALANCE
+transactions — one per holding, dated as of the report's "Value Date" column (or --as-of
+if that's missing), using the broker's own reported average rate as cost basis. This is
+a snapshot, not real trade history, which is why it lands as OPENING_BALANCE rather than
+BUY.
 
-Equity (ISIN prefix INE) and mutual fund (ISIN prefix INF) rows are split automatically
-and inserted into portfolio.transactions / portfolio.mf_transactions respectively.
-Anything else (e.g. bond/NCD ISINs, or an MF ISIN not present in staging.mf_scheme_master)
-is skipped and reported, not guessed at.
+Only equity ISINs (prefix INE) are handled — anything else (e.g. bond/NCD ISINs) is
+skipped and reported, not guessed at.
 
 Idempotent: re-running with the same --portfolio/--as-of is safe to re-run for a
 corrected file, but does NOT dedupe against a different as-of date — an OPENING_BALANCE
@@ -30,7 +28,6 @@ from mystock.etl.portfolio.db_helpers import (
     get_or_create_user,
     get_or_create_portfolio,
     match_security_by_isin,
-    match_mf_scheme_by_isin,
 )
 
 ISIN_RE = re.compile(r"^IN[EF][0-9A-Z]{9}$")
@@ -63,12 +60,6 @@ def main():
     ap.add_argument("--portfolio", required=True)
     ap.add_argument("--broker", default=None)
     ap.add_argument("--as-of", default=None, help="fallback date (YYYY-MM-DD) if the file has no Value Date")
-    ap.add_argument("--mf-only", action="store_true",
-                     help="skip equity (INE) rows entirely. This file's 'Rate' column is the market rate as of "
-                          "the report date, NOT average cost -- equity cost basis should come from a source with "
-                          "a genuine Avg. Price column instead (see import_holdings_symbol.py). Use this flag "
-                          "when re-running just to pick up newly-matchable MF schemes on a portfolio whose equity "
-                          "opening balances were already correctly seeded elsewhere.")
     args = ap.parse_args()
 
     fallback_date = datetime.strptime(args.as_of, "%Y-%m-%d").date() if args.as_of else datetime.today().date()
@@ -83,7 +74,7 @@ def main():
     user_id = get_or_create_user(conn, args.user)
     portfolio_id = get_or_create_portfolio(conn, user_id, args.portfolio, broker=args.broker)
 
-    equity_inserted = mf_inserted = skipped = 0
+    equity_inserted = skipped = 0
     skipped_rows = []
 
     with conn.cursor() as cur:
@@ -97,8 +88,6 @@ def main():
             txn_date = parse_value_date(value_date_raw, fallback_date)
 
             if isin.startswith("INE"):
-                if args.mf_only:
-                    continue
                 match = match_security_by_isin(conn, isin)
                 if not match:
                     skipped += 1
@@ -114,23 +103,6 @@ def main():
                     (portfolio_id, security_key, txn_date, qty, price, Path(args.file).name),
                 )
                 equity_inserted += 1
-            elif isin.startswith("INF"):
-                match = match_mf_scheme_by_isin(conn, isin)
-                if not match:
-                    skipped += 1
-                    skipped_rows.append((isin, scrip_name, "MF ISIN not in staging.mf_scheme_master"))
-                    continue
-                scheme_key, scheme_name = match
-                cur.execute(
-                    """INSERT INTO portfolio.mf_transactions
-                       (portfolio_id, scheme_key, transaction_type, transaction_date, units, price, source_file)
-                       VALUES (%s, %s, 'OPENING_BALANCE', %s, %s, %s, %s)
-                       ON CONFLICT (portfolio_id, scheme_key, transaction_type, transaction_date, units, price)
-                       WHERE transaction_type = 'OPENING_BALANCE'
-                       DO NOTHING""",
-                    (portfolio_id, scheme_key, txn_date, qty, price, Path(args.file).name),
-                )
-                mf_inserted += 1
             else:
                 skipped += 1
                 skipped_rows.append((isin, scrip_name, "unrecognized ISIN prefix (likely bond/NCD)"))
@@ -138,7 +110,7 @@ def main():
     conn.commit()
     conn.close()
 
-    print(f"portfolio_id={portfolio_id}: {equity_inserted} equity, {mf_inserted} MF opening balances inserted, {skipped} skipped")
+    print(f"portfolio_id={portfolio_id}: {equity_inserted} equity opening balances inserted, {skipped} skipped")
     for isin, name, reason in skipped_rows:
         print(f"  SKIPPED {isin} ({name}): {reason}")
 

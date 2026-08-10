@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict zYePU98PrHEnc9l8UWdbSBwo0kuP1MAzRbQgIdj0Ku6kNI5W27d2TY6iGRIGh9n
+\restrict 3stKct8cDsnWcdQVeUNYejjd6JXiF1TC3ZDKPQ6VDJLPin6xXjAVXX0THfi9Iv7
 
 -- Dumped from database version 18.4 (Homebrew)
 -- Dumped by pg_dump version 18.4 (Homebrew)
@@ -187,70 +187,6 @@ ALTER SEQUENCE portfolio.import_staging_trades_staging_id_seq OWNED BY portfolio
 
 
 --
--- Name: mf_scheme_cost; Type: TABLE; Schema: portfolio; Owner: raj
---
-
-CREATE TABLE portfolio.mf_scheme_cost (
-    scheme_key integer NOT NULL,
-    expense_ratio_pct numeric(5,3),
-    exit_load_pct numeric(5,3),
-    exit_load_period_days integer,
-    as_of_date date NOT NULL,
-    source text,
-    notes text,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL
-);
-
-
-ALTER TABLE portfolio.mf_scheme_cost OWNER TO raj;
-
---
--- Name: mf_transactions; Type: TABLE; Schema: portfolio; Owner: raj
---
-
-CREATE TABLE portfolio.mf_transactions (
-    transaction_id bigint NOT NULL,
-    portfolio_id integer NOT NULL,
-    scheme_key integer NOT NULL,
-    folio_number text,
-    transaction_type text NOT NULL,
-    transaction_date date NOT NULL,
-    units numeric(18,4) NOT NULL,
-    price numeric(14,4) NOT NULL,
-    amount numeric(14,2),
-    source_file text,
-    notes text,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT mf_transactions_price_check CHECK ((price >= (0)::numeric)),
-    CONSTRAINT mf_transactions_transaction_type_check CHECK ((transaction_type = ANY (ARRAY['BUY'::text, 'SELL'::text, 'OPENING_BALANCE'::text]))),
-    CONSTRAINT mf_transactions_units_check CHECK ((units > (0)::numeric))
-);
-
-
-ALTER TABLE portfolio.mf_transactions OWNER TO raj;
-
---
--- Name: mf_transactions_transaction_id_seq; Type: SEQUENCE; Schema: portfolio; Owner: raj
---
-
-CREATE SEQUENCE portfolio.mf_transactions_transaction_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER SEQUENCE portfolio.mf_transactions_transaction_id_seq OWNER TO raj;
-
---
--- Name: mf_transactions_transaction_id_seq; Type: SEQUENCE OWNED BY; Schema: portfolio; Owner: raj
---
-
-ALTER SEQUENCE portfolio.mf_transactions_transaction_id_seq OWNED BY portfolio.mf_transactions.transaction_id;
-
-
---
 -- Name: portfolios; Type: TABLE; Schema: portfolio; Owner: raj
 --
 
@@ -384,13 +320,6 @@ ALTER TABLE ONLY portfolio.import_staging_trades ALTER COLUMN staging_id SET DEF
 
 
 --
--- Name: mf_transactions transaction_id; Type: DEFAULT; Schema: portfolio; Owner: raj
---
-
-ALTER TABLE ONLY portfolio.mf_transactions ALTER COLUMN transaction_id SET DEFAULT nextval('portfolio.mf_transactions_transaction_id_seq'::regclass);
-
-
---
 -- Name: portfolios portfolio_id; Type: DEFAULT; Schema: portfolio; Owner: raj
 --
 
@@ -452,22 +381,6 @@ ALTER TABLE ONLY portfolio.import_staging_trades
 
 
 --
--- Name: mf_scheme_cost mf_scheme_cost_pkey; Type: CONSTRAINT; Schema: portfolio; Owner: raj
---
-
-ALTER TABLE ONLY portfolio.mf_scheme_cost
-    ADD CONSTRAINT mf_scheme_cost_pkey PRIMARY KEY (scheme_key);
-
-
---
--- Name: mf_transactions mf_transactions_pkey; Type: CONSTRAINT; Schema: portfolio; Owner: raj
---
-
-ALTER TABLE ONLY portfolio.mf_transactions
-    ADD CONSTRAINT mf_transactions_pkey PRIMARY KEY (transaction_id);
-
-
---
 -- Name: portfolios portfolios_pkey; Type: CONSTRAINT; Schema: portfolio; Owner: raj
 --
 
@@ -522,20 +435,6 @@ CREATE INDEX ix_import_staging_trades_portfolio ON portfolio.import_staging_trad
 
 
 --
--- Name: ix_portfolio_mf_transactions_portfolio; Type: INDEX; Schema: portfolio; Owner: raj
---
-
-CREATE INDEX ix_portfolio_mf_transactions_portfolio ON portfolio.mf_transactions USING btree (portfolio_id, transaction_date);
-
-
---
--- Name: ix_portfolio_mf_transactions_scheme; Type: INDEX; Schema: portfolio; Owner: raj
---
-
-CREATE INDEX ix_portfolio_mf_transactions_scheme ON portfolio.mf_transactions USING btree (scheme_key);
-
-
---
 -- Name: ix_portfolio_transactions_portfolio; Type: INDEX; Schema: portfolio; Owner: raj
 --
 
@@ -554,20 +453,6 @@ CREATE INDEX ix_portfolio_transactions_security ON portfolio.transactions USING 
 --
 
 CREATE INDEX ix_portfolio_value_daily_date ON portfolio.fact_portfolio_value_daily USING btree (date_key);
-
-
---
--- Name: ux_mf_transactions_dedupe; Type: INDEX; Schema: portfolio; Owner: raj
---
-
-CREATE UNIQUE INDEX ux_mf_transactions_dedupe ON portfolio.mf_transactions USING btree (portfolio_id, scheme_key, transaction_type, transaction_date, folio_number, units, amount);
-
-
---
--- Name: ux_mf_transactions_ob_dedupe; Type: INDEX; Schema: portfolio; Owner: raj
---
-
-CREATE UNIQUE INDEX ux_mf_transactions_ob_dedupe ON portfolio.mf_transactions USING btree (portfolio_id, scheme_key, transaction_type, transaction_date, units, price) WHERE (transaction_type = 'OPENING_BALANCE'::text);
 
 
 --
@@ -642,30 +527,6 @@ ALTER TABLE ONLY portfolio.import_staging_trades
 
 
 --
--- Name: mf_scheme_cost mf_scheme_cost_scheme_key_fkey; Type: FK CONSTRAINT; Schema: portfolio; Owner: raj
---
-
-ALTER TABLE ONLY portfolio.mf_scheme_cost
-    ADD CONSTRAINT mf_scheme_cost_scheme_key_fkey FOREIGN KEY (scheme_key) REFERENCES main.dim_mf_scheme(scheme_key);
-
-
---
--- Name: mf_transactions mf_transactions_portfolio_id_fkey; Type: FK CONSTRAINT; Schema: portfolio; Owner: raj
---
-
-ALTER TABLE ONLY portfolio.mf_transactions
-    ADD CONSTRAINT mf_transactions_portfolio_id_fkey FOREIGN KEY (portfolio_id) REFERENCES portfolio.portfolios(portfolio_id);
-
-
---
--- Name: mf_transactions mf_transactions_scheme_key_fkey; Type: FK CONSTRAINT; Schema: portfolio; Owner: raj
---
-
-ALTER TABLE ONLY portfolio.mf_transactions
-    ADD CONSTRAINT mf_transactions_scheme_key_fkey FOREIGN KEY (scheme_key) REFERENCES main.dim_mf_scheme(scheme_key);
-
-
---
 -- Name: portfolios portfolios_user_id_fkey; Type: FK CONSTRAINT; Schema: portfolio; Owner: raj
 --
 
@@ -690,8 +551,78 @@ ALTER TABLE ONLY portfolio.transactions
 
 
 --
+-- Name: SCHEMA portfolio; Type: ACL; Schema: -; Owner: raj
+--
+
+GRANT USAGE ON SCHEMA portfolio TO mcp_reader;
+
+
+--
+-- Name: TABLE broker_fee_schedule; Type: ACL; Schema: portfolio; Owner: raj
+--
+
+GRANT SELECT ON TABLE portfolio.broker_fee_schedule TO mcp_reader;
+
+
+--
+-- Name: TABLE daily_alert; Type: ACL; Schema: portfolio; Owner: raj
+--
+
+GRANT SELECT ON TABLE portfolio.daily_alert TO mcp_reader;
+
+
+--
+-- Name: TABLE fact_portfolio_health; Type: ACL; Schema: portfolio; Owner: raj
+--
+
+GRANT SELECT ON TABLE portfolio.fact_portfolio_health TO mcp_reader;
+
+
+--
+-- Name: TABLE fact_portfolio_value_daily; Type: ACL; Schema: portfolio; Owner: raj
+--
+
+GRANT SELECT ON TABLE portfolio.fact_portfolio_value_daily TO mcp_reader;
+
+
+--
+-- Name: TABLE import_staging_trades; Type: ACL; Schema: portfolio; Owner: raj
+--
+
+GRANT SELECT ON TABLE portfolio.import_staging_trades TO mcp_reader;
+
+
+--
+-- Name: TABLE portfolios; Type: ACL; Schema: portfolio; Owner: raj
+--
+
+GRANT SELECT ON TABLE portfolio.portfolios TO mcp_reader;
+
+
+--
+-- Name: TABLE transactions; Type: ACL; Schema: portfolio; Owner: raj
+--
+
+GRANT SELECT ON TABLE portfolio.transactions TO mcp_reader;
+
+
+--
+-- Name: TABLE users; Type: ACL; Schema: portfolio; Owner: raj
+--
+
+GRANT SELECT ON TABLE portfolio.users TO mcp_reader;
+
+
+--
+-- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: portfolio; Owner: raj
+--
+
+ALTER DEFAULT PRIVILEGES FOR ROLE raj IN SCHEMA portfolio GRANT SELECT ON TABLES TO mcp_reader;
+
+
+--
 -- PostgreSQL database dump complete
 --
 
-\unrestrict zYePU98PrHEnc9l8UWdbSBwo0kuP1MAzRbQgIdj0Ku6kNI5W27d2TY6iGRIGh9n
+\unrestrict 3stKct8cDsnWcdQVeUNYejjd6JXiF1TC3ZDKPQ6VDJLPin6xXjAVXX0THfi9Iv7
 

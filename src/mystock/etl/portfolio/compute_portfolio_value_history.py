@@ -96,33 +96,6 @@ def compute_equity_value(conn, portfolio_id, as_of):
     return market_value, cost_basis, cash_dividends, realized_pnl
 
 
-def compute_mf_value(conn, portfolio_id, as_of):
-    with conn.cursor() as cur:
-        cur.execute(
-            """SELECT scheme_key, units, price FROM portfolio.mf_transactions
-               WHERE portfolio_id = %s AND transaction_type = 'OPENING_BALANCE'""",
-            (portfolio_id,),
-        )
-        holdings = cur.fetchall()
-
-        market_value = cost_basis = 0.0
-        for scheme_key, units, avg_price in holdings:
-            units, avg_price = float(units), float(avg_price)
-            cur.execute(
-                """SELECT nav FROM main.fact_mf_nav_daily fmnd
-                   JOIN main.dim_date dd ON dd.date_key = fmnd.date_key
-                   WHERE fmnd.scheme_key = %s AND dd.full_date <= %s
-                   ORDER BY dd.full_date DESC LIMIT 1""",
-                (scheme_key, as_of),
-            )
-            nav_row = cur.fetchone()
-            nav = float(nav_row[0]) if nav_row else avg_price
-            market_value += units * nav
-            cost_basis += units * avg_price
-
-    return market_value, cost_basis
-
-
 def write_snapshot(conn, portfolio_id, as_of, market_value, cost_basis, cash_dividends, realized_pnl):
     unrealized_pnl = market_value - cost_basis
     with conn.cursor() as cur:
@@ -162,9 +135,7 @@ def main():
         portfolios = cur.fetchall()
 
     for portfolio_id, name in portfolios:
-        eq_mv, eq_cb, cash_div, realized = compute_equity_value(conn, portfolio_id, as_of)
-        mf_mv, mf_cb = compute_mf_value(conn, portfolio_id, as_of)
-        market_value, cost_basis = eq_mv + mf_mv, eq_cb + mf_cb
+        market_value, cost_basis, cash_div, realized = compute_equity_value(conn, portfolio_id, as_of)
         write_snapshot(conn, portfolio_id, as_of, market_value, cost_basis, cash_div, realized)
         print(f"portfolio_id={portfolio_id} ({name}) as_of={as_of}: "
               f"market_value={market_value:,.2f} cost_basis={cost_basis:,.2f} "

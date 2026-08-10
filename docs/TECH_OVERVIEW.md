@@ -1,11 +1,12 @@
 # MyStock — what's actually going on under the hood
 
 A personal Indian stock-market intelligence system: it pulls 10 years of NSE price/volume
-history, mutual fund NAVs, company fundamentals, and news for ~3,200 listed companies,
-scores ~750 of them on an 8-category "quality" rubric, tracks a real portfolio against all
-of it, and answers natural-language questions about the whole thing through Claude Code.
+history, company fundamentals, and news for ~3,200 listed companies, scores ~750 of them
+on an 8-category "quality" rubric, tracks a real equities/ETF portfolio against all of it,
+and answers natural-language questions about the whole thing through Claude Code.
 Everything runs locally on one Mac — no cloud data warehouse, no paid APIs, no hosted LLM
-except the chat interface itself.
+except the chat interface itself. (Mutual funds are deliberately out of scope — a fund
+manager already does the active-management job there.)
 
 Current scale, for context: **3,241 symbols, 4.46M daily price rows spanning 2016–2026,
 750 symbols quality-scored, 1,424 news headlines sentiment-scored, 37 live portfolio
@@ -18,7 +19,6 @@ flowchart TB
     subgraph sources["Data sources (free, no API keys)"]
         NSE["NSE bhavcopy\n(jugaad-data)"]
         YF["Yahoo Finance\n(yfinance)"]
-        AMFI["AMFI mutual fund NAVs"]
         RSS["Google News RSS"]
     end
 
@@ -54,7 +54,7 @@ flowchart TB
 | Layer | Technology | Why |
 |---|---|---|
 | Database | **PostgreSQL + pgvector** | One database does both relational (star schema) and vector similarity search (embeddings) — no separate vector DB needed. |
-| Data ingestion | **jugaad-data**, **yfinance**, AMFI's NAVAll.txt, **feedparser** (RSS) | All free, no API keys. jugaad-data pulls NSE's own bhavcopy including delivery quantity, which OHLCV-only sources like plain Kaggle dumps don't have. |
+| Data ingestion | **jugaad-data**, **yfinance**, **feedparser** (RSS) | All free, no API keys. jugaad-data pulls NSE's own bhavcopy including delivery quantity, which OHLCV-only sources like plain Kaggle dumps don't have. |
 | ETL orchestration | Plain Python + **launchd** (macOS's cron equivalent) | No Airflow/Dagster — at this scale (one daily job, a few steps) a workflow engine would be pure overhead. Each step is a Python module, logged to a `metadata.etl_runs` table for observability. |
 | Sentiment analysis | **FinBERT** (`ProsusAI/finbert`, via `transformers`) | A BERT model *fine-tuned specifically on financial text* — general-purpose sentiment models misread finance-speak (e.g. "beat estimates" reads as neutral to a generic model but is strongly positive here). Runs locally, free, no per-call cost. |
 | Semantic search / RAG | **sentence-transformers** (`all-MiniLM-L6-v2`) + pgvector | Embeds the product docs and schema metadata so an AI can search them by *meaning* ("why is X null") not just keyword match. 384-dim embeddings, cosine similarity via pgvector's `<=>` operator. |

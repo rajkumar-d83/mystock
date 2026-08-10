@@ -1,14 +1,15 @@
 # MyStock — Status
 
-Last updated: 2026-08-07
+Last updated: 2026-08-08
 
 ## What's built
 
 **Data pipeline** — Staging (raw, schema-on-read JSONB) → Main (star schema: dimensions +
 facts) for NSE equity prices/volume/delivery (10-year history, 3,241 symbols), company
-fundamentals (750 symbols, NIFTY Total Market), mutual fund NAVs (12 AMCs), index
-snapshots, and news. 8 automated data-quality checks logged on every run
-(`metadata.data_quality`), plus full run tracking (`metadata.etl_runs`).
+fundamentals (750 symbols, NIFTY Total Market), index snapshots, and news. Equities/ETFs
+only — mutual funds are deliberately out of scope, see below. 8 automated data-quality
+checks logged on every run (`metadata.data_quality`), plus full run tracking
+(`metadata.etl_runs`).
 
 **Quality Score** — 8-category weighted score (0–100) per stock: Business Quality,
 Growth, Financial Strength, Cash Flow/Capital Allocation, Balance Sheet, Governance,
@@ -52,8 +53,8 @@ all-MiniLM-L6-v2) for semantic search via `search_docs` — no cloud embedding A
   Vedanta's 5-way demerger (VEDL/VAML/VEDPOWER/VISL/VOGL all inherited broker-assigned
   cost bases at the same nominal date, which don't reflect a fair value split).
 - **Broker import scripts** (`import_holdings_isin`, `import_holdings_symbol`,
-  `import_trades_fuzzy`, `import_elss`) haven't been exercised against a live broker
-  export recently — will get real use the next time a statement is downloaded.
+  `import_trades_fuzzy`) haven't been exercised against a live broker export recently —
+  will get real use the next time a statement is downloaded.
 - **Universe capped at NIFTY Total Market** (750 symbols) rather than the full ~2,415
   NSE-listed universe — expansion is possible (no architecture change needed) but has a
   real time cost (~15–18hr one-time backfill) and weaker data quality for micro-caps.
@@ -62,6 +63,11 @@ all-MiniLM-L6-v2) for semantic search via `search_docs` — no cloud embedding A
 
 ## Not built (out of scope for now)
 
+- **Mutual fund tracking** — removed on 2026-08-08 (was built and working: AMFI NAV
+  pipeline, MF holdings, MF cost modeling). Deliberate scope cut, not a regression — a
+  fund manager already does the active-management job for MFs, so mystock's
+  quality-scoring/signal machinery doesn't add much there. Will live in a separate,
+  purpose-built app if/when needed. See `MYSTOCK_PRODUCT_SPEC.md` §4.
 - Any UI beyond SQL/chat (dashboards are an explicit non-goal — see
   `MYSTOCK_PRODUCT_SPEC.md` §4).
 - F&O (futures & options) tracking.

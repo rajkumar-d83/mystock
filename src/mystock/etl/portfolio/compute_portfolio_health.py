@@ -1,10 +1,9 @@
 """Computes one day's portfolio health snapshot (portfolio.fact_portfolio_health) per
 portfolio: a holdings-value-weighted rollup of main.fact_stock_quality_score across the
 portfolio's current equity holdings (from OPENING_BALANCE — same "current holdings"
-convention as compute_portfolio_value_history.py). Mutual fund holdings aren't included
-in the weighting since this warehouse doesn't compute a per-scheme quality score — only
-holdings_with_score_pct reflects that gap (an MF-heavy portfolio will show a lower
-coverage %, correctly, rather than being silently excluded from the denominator).
+convention as compute_portfolio_value_history.py). holdings_with_score_pct tracks what
+fraction of holdings actually had a quality score to weight (some equities have
+incomplete fundamentals data — see MYSTOCK_PRODUCT_SPEC.md §9, "Handling missing data").
 
 Usage:
     python -m mystock.etl.portfolio.compute_portfolio_health                  # today, all portfolios

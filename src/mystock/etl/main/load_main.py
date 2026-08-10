@@ -17,13 +17,11 @@ LOADS = [
     "03_fact_daily_prices.sql",
     "04_fact_volume.sql",
     "05_fact_delivery.sql",
-    "06_dim_mf_scheme.sql",
-    "07_fact_mf_nav_daily.sql",
-    "08_fact_company_fundamentals.sql",
-    "09_fact_company_financials.sql",
-    "10_fact_company_dividends.sql",
-    "11_dim_index.sql",
-    "12_fact_index_daily.sql",
+    "06_fact_company_fundamentals.sql",
+    "07_fact_company_financials.sql",
+    "08_fact_company_dividends.sql",
+    "09_dim_index.sql",
+    "10_fact_index_daily.sql",
 ]
 
 

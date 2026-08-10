@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict AHYV2wqm3TBgSs8HzfEaVHkfnJeX5ab6X7kfkBxZmzwka4nbRtobdjWGGsU09hE
+\restrict od2E8nOlh1NHcEdkb5CA5OneWgV7HJkuPoDUKgN3KKqMxDdwLDi5cGCBB5eTq1c
 
 -- Dumped from database version 18.4 (Homebrew)
 -- Dumped by pg_dump version 18.4 (Homebrew)
@@ -31,58 +31,6 @@ ALTER SCHEMA staging OWNER TO raj;
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
-
---
--- Name: amfi_mf_nav_history_raw; Type: TABLE; Schema: staging; Owner: raj
---
-
-CREATE TABLE staging.amfi_mf_nav_history_raw (
-    id bigint NOT NULL,
-    scheme_code bigint NOT NULL,
-    nav_date date NOT NULL,
-    raw_payload jsonb NOT NULL,
-    source text DEFAULT 'mfapi'::text NOT NULL,
-    batch_id uuid NOT NULL,
-    fetched_at timestamp with time zone DEFAULT now() NOT NULL
-);
-
-
-ALTER TABLE staging.amfi_mf_nav_history_raw OWNER TO raj;
-
---
--- Name: amfi_mf_nav_history_raw_id_seq; Type: SEQUENCE; Schema: staging; Owner: raj
---
-
-CREATE SEQUENCE staging.amfi_mf_nav_history_raw_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER SEQUENCE staging.amfi_mf_nav_history_raw_id_seq OWNER TO raj;
-
---
--- Name: amfi_mf_nav_history_raw_id_seq; Type: SEQUENCE OWNED BY; Schema: staging; Owner: raj
---
-
-ALTER SEQUENCE staging.amfi_mf_nav_history_raw_id_seq OWNED BY staging.amfi_mf_nav_history_raw.id;
-
-
---
--- Name: amfi_mf_scheme_master; Type: TABLE; Schema: staging; Owner: raj
---
-
-CREATE TABLE staging.amfi_mf_scheme_master (
-    scheme_code bigint NOT NULL,
-    raw_payload jsonb NOT NULL,
-    batch_id uuid NOT NULL,
-    fetched_at timestamp with time zone DEFAULT now() NOT NULL
-);
-
-
-ALTER TABLE staging.amfi_mf_scheme_master OWNER TO raj;
 
 --
 -- Name: company_dividends; Type: TABLE; Schema: staging; Owner: raj
@@ -227,39 +175,6 @@ CREATE TABLE staging.index_daily (
 
 
 ALTER TABLE staging.index_daily OWNER TO raj;
-
---
--- Name: mf_nav_daily; Type: TABLE; Schema: staging; Owner: raj
---
-
-CREATE TABLE staging.mf_nav_daily (
-    scheme_code bigint NOT NULL,
-    nav_date date NOT NULL,
-    nav numeric(14,4),
-    loaded_at timestamp with time zone DEFAULT now() NOT NULL
-);
-
-
-ALTER TABLE staging.mf_nav_daily OWNER TO raj;
-
---
--- Name: mf_scheme_master; Type: TABLE; Schema: staging; Owner: raj
---
-
-CREATE TABLE staging.mf_scheme_master (
-    scheme_code bigint NOT NULL,
-    scheme_name text,
-    fund_house text,
-    scheme_type text,
-    scheme_category text,
-    isin_growth text,
-    isin_div_reinv text,
-    is_active boolean DEFAULT true NOT NULL,
-    loaded_at timestamp with time zone DEFAULT now() NOT NULL
-);
-
-
-ALTER TABLE staging.mf_scheme_master OWNER TO raj;
 
 --
 -- Name: news_raw; Type: TABLE; Schema: staging; Owner: raj
@@ -601,13 +516,6 @@ CREATE TABLE staging.yf_financials_raw (
 ALTER TABLE staging.yf_financials_raw OWNER TO raj;
 
 --
--- Name: amfi_mf_nav_history_raw id; Type: DEFAULT; Schema: staging; Owner: raj
---
-
-ALTER TABLE ONLY staging.amfi_mf_nav_history_raw ALTER COLUMN id SET DEFAULT nextval('staging.amfi_mf_nav_history_raw_id_seq'::regclass);
-
-
---
 -- Name: news_raw id; Type: DEFAULT; Schema: staging; Owner: raj
 --
 
@@ -647,30 +555,6 @@ ALTER TABLE ONLY staging.nse_indices_bhavcopy_raw ALTER COLUMN id SET DEFAULT ne
 --
 
 ALTER TABLE ONLY staging.nse_stock_history_raw ALTER COLUMN id SET DEFAULT nextval('staging.nse_stock_history_raw_id_seq'::regclass);
-
-
---
--- Name: amfi_mf_nav_history_raw amfi_mf_nav_history_raw_pkey; Type: CONSTRAINT; Schema: staging; Owner: raj
---
-
-ALTER TABLE ONLY staging.amfi_mf_nav_history_raw
-    ADD CONSTRAINT amfi_mf_nav_history_raw_pkey PRIMARY KEY (id);
-
-
---
--- Name: amfi_mf_nav_history_raw amfi_mf_nav_history_raw_scheme_code_nav_date_source_key; Type: CONSTRAINT; Schema: staging; Owner: raj
---
-
-ALTER TABLE ONLY staging.amfi_mf_nav_history_raw
-    ADD CONSTRAINT amfi_mf_nav_history_raw_scheme_code_nav_date_source_key UNIQUE (scheme_code, nav_date, source);
-
-
---
--- Name: amfi_mf_scheme_master amfi_mf_scheme_master_pkey; Type: CONSTRAINT; Schema: staging; Owner: raj
---
-
-ALTER TABLE ONLY staging.amfi_mf_scheme_master
-    ADD CONSTRAINT amfi_mf_scheme_master_pkey PRIMARY KEY (scheme_code);
 
 
 --
@@ -719,22 +603,6 @@ ALTER TABLE ONLY staging.fo_options_daily
 
 ALTER TABLE ONLY staging.index_daily
     ADD CONSTRAINT index_daily_pkey PRIMARY KEY (index_name, trade_date);
-
-
---
--- Name: mf_nav_daily mf_nav_daily_pkey; Type: CONSTRAINT; Schema: staging; Owner: raj
---
-
-ALTER TABLE ONLY staging.mf_nav_daily
-    ADD CONSTRAINT mf_nav_daily_pkey PRIMARY KEY (scheme_code, nav_date);
-
-
---
--- Name: mf_scheme_master mf_scheme_master_pkey; Type: CONSTRAINT; Schema: staging; Owner: raj
---
-
-ALTER TABLE ONLY staging.mf_scheme_master
-    ADD CONSTRAINT mf_scheme_master_pkey PRIMARY KEY (scheme_code);
 
 
 --
@@ -903,13 +771,6 @@ CREATE INDEX ix_fo_bhavcopy_raw_underlying ON staging.nse_fo_bhavcopy_raw USING 
 
 
 --
--- Name: ix_mf_nav_history_raw_date; Type: INDEX; Schema: staging; Owner: raj
---
-
-CREATE INDEX ix_mf_nav_history_raw_date ON staging.amfi_mf_nav_history_raw USING btree (nav_date);
-
-
---
 -- Name: ix_news_raw_published; Type: INDEX; Schema: staging; Owner: raj
 --
 
@@ -976,20 +837,6 @@ GRANT USAGE ON SCHEMA staging TO mcp_reader;
 
 
 --
--- Name: TABLE amfi_mf_nav_history_raw; Type: ACL; Schema: staging; Owner: raj
---
-
-GRANT SELECT ON TABLE staging.amfi_mf_nav_history_raw TO mcp_reader;
-
-
---
--- Name: TABLE amfi_mf_scheme_master; Type: ACL; Schema: staging; Owner: raj
---
-
-GRANT SELECT ON TABLE staging.amfi_mf_scheme_master TO mcp_reader;
-
-
---
 -- Name: TABLE company_dividends; Type: ACL; Schema: staging; Owner: raj
 --
 
@@ -1029,20 +876,6 @@ GRANT SELECT ON TABLE staging.fo_options_daily TO mcp_reader;
 --
 
 GRANT SELECT ON TABLE staging.index_daily TO mcp_reader;
-
-
---
--- Name: TABLE mf_nav_daily; Type: ACL; Schema: staging; Owner: raj
---
-
-GRANT SELECT ON TABLE staging.mf_nav_daily TO mcp_reader;
-
-
---
--- Name: TABLE mf_scheme_master; Type: ACL; Schema: staging; Owner: raj
---
-
-GRANT SELECT ON TABLE staging.mf_scheme_master TO mcp_reader;
 
 
 --
@@ -1140,5 +973,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE raj IN SCHEMA staging GRANT SELECT ON TABLES T
 -- PostgreSQL database dump complete
 --
 
-\unrestrict AHYV2wqm3TBgSs8HzfEaVHkfnJeX5ab6X7kfkBxZmzwka4nbRtobdjWGGsU09hE
+\unrestrict od2E8nOlh1NHcEdkb5CA5OneWgV7HJkuPoDUKgN3KKqMxDdwLDi5cGCBB5eTq1c
 

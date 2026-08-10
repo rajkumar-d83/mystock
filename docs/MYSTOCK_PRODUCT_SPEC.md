@@ -9,11 +9,15 @@ queued for v2.
 ## 1. Vision
 
 A personal stock market intelligence system: a single database that knows everything about
-Indian equities and mutual funds relevant to one investor's decision-making — prices, company
+Indian equities relevant to one investor's decision-making — prices, company
 fundamentals, a computed quality score per stock, real portfolio holdings and their
 performance, brokerage/tax costs, and news sentiment — queryable in plain SQL or plain English,
 with no dashboard to maintain and no manual spreadsheet to update. A daily digest answers
 "does anything need my attention today" without checking multiple tables by hand.
+
+Mutual funds are deliberately out of scope (see §4 Non-Goals) — a fund manager is already
+doing the active-management job there, so this system's own quality-scoring/signal
+machinery adds little; MF tracking, if wanted, belongs in a separate, purpose-built app.
 
 **Primary use case:** find multibagger candidates (small/mid-cap stocks with strong quality +
 growth + still-reasonable valuation), track what's actually been invested, and know the real
@@ -33,9 +37,9 @@ before building:
   signal, the sector signal — none of them exist only as a final number. Each stores its
   inputs (individual weighted metrics, the z-score and its trailing window, the sentiment
   score behind a flag) so "why is this 61.5" always has a real answer, not a shrug.
-- **Prefer free public data.** NSE bhavcopy, AMFI/mfapi.in, Yahoo Finance, Google News RSS —
-  no paid data subscription anywhere in the pipeline. A paid source is a last resort, not a
-  first reach, and needs a real justification when proposed.
+- **Prefer free public data.** NSE bhavcopy, Yahoo Finance, Google News RSS — no paid data
+  subscription anywhere in the pipeline. A paid source is a last resort, not a first reach,
+  and needs a real justification when proposed.
 - **Local-first AI whenever possible.** Embeddings (RAG) and sentiment scoring (FinBERT) run
   locally, specifically so scheduled/unattended jobs never carry a per-run cloud API cost.
   A cloud LLM call is fine for something a human triggers and reviews (like this chat); it's
@@ -61,7 +65,7 @@ itself every day, and one occasional manual step:
 ```
 Prices (bhavcopy) + index snapshots
               │
-   MF NAV + company fundamentals ── same universe re-fetched daily, not cached
+        Company fundamentals ── same universe re-fetched daily, not cached
               │
       Staging → Main refresh ── clean, type, dedupe, then load the query-ready layer
               │
@@ -109,13 +113,18 @@ so nothing runs until you actually have a new statement to bring in (see Design 
   streaming/live-tick pipeline.
 - **Bond/NCD tracking.** Out of scope for now; flagged as a known gap when it shows up in
   imported broker holdings, not silently dropped.
+- **Mutual funds.** Removed from scope on 2026-08-08 (was built and working in an earlier
+  version — AMFI/mfapi.in NAV pipeline, MF holdings tracking — but deliberately dropped, not
+  an oversight). A fund manager is already doing MF's active-management job, so this
+  system's stock-specific quality-scoring/signal machinery doesn't add much there; MF
+  tracking belongs in a separate, purpose-built app instead.
 
 ## 5. Architecture
 
 Two layers, named for what each actually does rather than generic medallion terminology:
 
 ```
-NSE / AMFI / Yahoo Finance / Google News
+NSE / Yahoo Finance / Google News
               │
         Collection jobs (daily + on-demand)
               │
@@ -138,10 +147,10 @@ NSE / AMFI / Yahoo Finance / Google News
 - **Staging**: everything lands here close to raw first, then gets cleaned/typed/validated in
   the same conceptual step — deduped, standardized across sources, schema drift caught early.
 - **Main**: the single source of truth everything downstream reads from — dimension tables
-  (security, date, sector, MF scheme), fact tables (daily prices, MF NAV, dividends,
-  fundamentals), and computed features (stock quality score, portfolio value/health, news
-  sentiment signal). Plus `portfolio`, for user-entered/imported data. No consumer — SQL,
-  chat, or MCP — ever reads Staging directly.
+  (security, date, sector), fact tables (daily prices, dividends, fundamentals), and
+  computed features (stock quality score, portfolio value/health, news sentiment signal).
+  Plus `portfolio`, for user-entered/imported data. No consumer — SQL, chat, or MCP — ever
+  reads Staging directly.
 
 ## 6. Data Domains
 
@@ -149,8 +158,6 @@ NSE / AMFI / Yahoo Finance / Google News
 |---|---|---|
 | Equity prices/volume/delivery | All 2,415 NSE-listed equities, 10-year history | NSE bhavcopy (`jugaad-data`) |
 | Company fundamentals + quality score | NIFTY Total Market, 750 symbols scored | Yahoo Finance (`yfinance`) |
-| Mutual funds | 12 AMCs (10 major + Parag Parikh + one allowlisted Tata scheme), NAV history | AMFI (`mfapi.in`) |
-| MF AMC costs | Expense ratio, exit load — manually maintained, held schemes only | Web research (no reliable free feed exists) |
 | Index snapshots | Whole-market daily close | `niftyindices.com` |
 | Broker costs | Brokerage/STT/exchange charges/GST/stamp duty, by segment | Broker's published pricing |
 | Portfolio | Multi-user, multi-broker, real imported holdings + trades | Broker export files (Upstox etc.) |
@@ -164,7 +171,6 @@ The question everything above eventually gets asked: how current is this, actual
 |---|---|
 | Equity prices/volume/delivery | Daily |
 | Index snapshots | Daily |
-| MF NAV | Daily |
 | Company fundamentals | Daily |
 | Quality Score | Daily |
 | News | Daily |
@@ -175,7 +181,6 @@ The question everything above eventually gets asked: how current is this, actual
 | Daily alert digest | Daily |
 | Holdings & transactions | On import (manual) |
 | Broker fee schedule | Manual, on rate change |
-| MF AMC cost (expense ratio/exit load) | Manual, periodic |
 
 Two things "Daily" doesn't mean here:
 
@@ -188,7 +193,7 @@ Two things "Daily" doesn't mean here:
   reprocessing a past date (`--date 2026-07-10`, e.g. to backfill a gap) does *not* also
   re-pull today's news or fundamentals as a side effect, since sources like Google News RSS
   or a live fundamentals snapshot have no concept of "as of that past date" to begin with.
-  Prices, NAV, and index snapshots don't have this restriction — those genuinely can be
+  Prices and index snapshots don't have this restriction — those genuinely can be
   backfilled for any past date.
 - **Holdings only change when you tell it to.** Nothing infers a new trade or holding — a
   broker export has to be imported for a portfolio to reflect it. This is deliberate (see
@@ -361,8 +366,8 @@ that comparable.
 - **Daily portfolio alert** — one row per portfolio per day combining value change +
   every flagged stock-level and sector-level signal into a plain-English summary
   (`portfolio.daily_alert`). Delivery is query-based, not a push notification, by design.
-- **Cost modeling** — brokerage/STT/exchange charges (by broker/segment) and MF expense
-  ratio/exit load, so "what does this actually cost me" is answerable, not estimated.
+- **Cost modeling** — brokerage/STT/exchange charges (by broker/segment), so "what does
+  this actually cost me" is answerable, not estimated.
 
 ## 11. AI/ML Components — local-first
 
@@ -444,7 +449,6 @@ incidents from this project's own build history, not guesses at what might go wr
 | Google News RSS changes format or blocks access | Not yet | None | **Unmitigated** — single source for news, no fallback feed |
 | Broker export misread (wrong column meaning, duplicate account, bad symbol match) | Yes — three real cases in one session: a "Rate" column misread as cost basis instead of market price, the same account imported twice as two "portfolios," and 5 trades fuzzy-matched to the wrong ticker on a coincidental substring | ISIN matching preferred over fuzzy name matching wherever possible; uncertain trade matches held in a staging/review table, never auto-promoted; a reconciliation check (holdings vs. trade netting) before trusting new data; unique-constraint dedup added to every import script after the duplicate-import incident | **Built**, proven against real data |
 | Missing fundamentals data | N/A — design decision | A missing sub-metric is excluded from its category average, never scored as zero | **Built** |
-| MF universe gaps (an AMC not covered) | Yes — Tata, Parag Parikh, Invesco, and Motilal Oswal all surfaced as real gaps | Specific schemes allowlisted by code when an actual holding needs it, rather than broadening the whole AMC filter (which would've pulled in ~150 irrelevant closed-end Tata funds) | **Built** for schemes actually held; other AMCs remain a known, flagged gap, not a hidden one |
 | `main.dim_date` extends years into the future (it's a pre-populated calendar dimension) | Yes — silently made the sector signal compute zero rows, because `max(full_date)` grabbed a future date instead of the latest *priced* date | Fixed at the one spot found (join against `fact_daily_prices` for the true latest date) | **Partial** — no lint/check yet to catch the same mistake recurring elsewhere |
 | Single local Postgres, single Mac, no backup | N/A | None | **Unmitigated** — a real operational risk if this machine is lost |
 | Silent data quality regression | Ongoing, by nature | 8 automated checks + per-run tracking (see Data Quality Rules) | **Built** |
@@ -466,6 +470,12 @@ and MF cost modeling, MCP server, local-first RAG + FinBERT. Everything describe
 "built" in this document is built and was verified against the live database while
 writing it — v1 is a snapshot of reality, not a plan.
 
+**v1.1 (2026-08-08)** — mutual fund tracking removed entirely (AMFI/mfapi.in NAV
+pipeline, `staging`/`main`/`portfolio` MF tables, MF cost modeling, MF portions of
+holdings import) — a deliberate scope cut, not a regression, to keep the system focused
+on equities/ETFs where its quality-scoring/signal machinery actually adds value over a
+fund manager's own active management. See §4 Non-Goals.
+
 **v2 (proposed, not started)** — a dedicated **Research Engine**: the shift from "track
 what I own" to "research what I might buy." Assessed by real feasibility, not just
 listed:
@@ -479,8 +489,7 @@ listed:
   financials are already fetched, needs a QoQ/YoY comparison layer), **Corporate
   actions** (a real gap surfaced directly by the Tata Motors demerger this session).
 - *Real effort, no free clean data source* — needs a real scraping project or a paid
-  source, decide deliberately before starting: **MF ownership changes** (would mean
-  scraping monthly factsheet PDFs per AMC, not a structured feed), **FII/DII ownership**
+  source, decide deliberately before starting: **FII/DII ownership**
   (quarterly shareholding filings, not currently sourced), **annual report embeddings** (a
   genuine new subsystem — PDF sourcing, parsing, chunking, embedding — but the highest-value
   option for the "moat"/governance metrics currently marked not-computable).

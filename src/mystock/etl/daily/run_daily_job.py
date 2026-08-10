@@ -1,14 +1,14 @@
 """Daily incremental job: fetch a day's whole-market equity bhavcopy and index snapshot,
-and (only on a genuine "today" run, not a --date backfill/reprocess) mutual fund NAV and
-NIFTY Total Market company fundamentals, validate they landed, then refresh Staging and
-Main. Idempotent — safe to re-run for the same date, and safe to run even when there's no
-trading (holidays/weekends just short-circuit after fetch).
+and (only on a genuine "today" run, not a --date backfill/reprocess) NIFTY Total Market
+company fundamentals, validate they landed, then refresh Staging and Main. Idempotent —
+safe to re-run for the same date, and safe to run even when there's no trading
+(holidays/weekends just short-circuit after fetch).
 
-MF NAV and fundamentals are gated on `d == date.today()` specifically, not the --date
-argument, because neither AMFI's NAVAll.txt nor yfinance's snapshot has a concept of
-"give me the file as of date X" the way NSE's bhavcopy does — they're always "right now".
-Running `--date 2026-07-10` to reprocess an old day shouldn't also pull today's MF NAV or
-fundamentals as a side effect (see MYSTOCK_PRODUCT_SPEC.md §7, Data Freshness).
+Fundamentals are gated on `d == date.today()` specifically, not the --date argument,
+because yfinance's snapshot has no concept of "give me the file as of date X" the way
+NSE's bhavcopy does — it's always "right now". Running `--date 2026-07-10` to reprocess
+an old day shouldn't also pull today's fundamentals as a side effect (see
+MYSTOCK_PRODUCT_SPEC.md §7, Data Freshness).
 
 Fundamentals: the .info snapshot (P/E, market cap, etc.) is re-fetched daily (not just
 backfilled once) deliberately — several scoring inputs (PEG, P/E-vs-own-history, ownership
@@ -33,7 +33,7 @@ OPENING_BALANCE holdings only, so they're cheap and don't depend on the day's
 fundamentals/scores being current — see compute_portfolio_value_history.py for why
 --date backfills should refresh them too).
 
-News/sentiment (added Phase 5) is gated on is_today_run like MF NAV/fundamentals —
+News/sentiment (added Phase 5) is gated on is_today_run like fundamentals —
 Google News RSS has no "as of date X" concept, it's always "right now", so a --date
 backfill/reprocess shouldn't also pull today's news as a side effect. Scoped to
 currently-held securities only (portfolio.transactions OPENING_BALANCE), not the whole
@@ -91,17 +91,6 @@ def fundamentals_rows_inserted_since(conn, watermark):
         return cur.fetchone()[0]
 
 
-def mf_rows_inserted_since(conn, watermark):
-    """MF rows are dated by AMFI's own per-row nav_date, which won't generally equal
-    this job's --date (a scheme's latest NAV might still be showing yesterday's date
-    when this runs) — so unlike the equity check, this can't filter by date. A
-    fetched_at watermark captures "did this run insert anything new" correctly instead;
-    ON CONFLICT DO NOTHING means already-present rows don't bump fetched_at."""
-    with conn.cursor() as cur:
-        cur.execute("SELECT count(*) FROM staging.amfi_mf_nav_history_raw WHERE fetched_at >= %s", (watermark,))
-        return cur.fetchone()[0]
-
-
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--date", type=parse_date, default=date.today())
@@ -114,20 +103,15 @@ def main():
         run_step_with_args("fetch indices bhavcopy", "mystock.etl.daily.fetch_indices_bhavcopy", ["--date", str(d)])
 
         is_today_run = d == date.today()
-        mf_n = 0
         fund_n = 0
         if is_today_run:
-            mf_watermark = datetime.now(timezone.utc)
-            run_step("fetch MF daily NAV", "mystock.etl.daily.fetch_mf_daily_nav")
-            mf_n = mf_rows_inserted_since(conn, mf_watermark)
-
             fund_watermark = datetime.now(timezone.utc)
             run_step_with_args("fetch company fundamentals", "mystock.etl.historical.fetch_company_fundamentals", ["--mode", "snapshot"])
             fund_n = fundamentals_rows_inserted_since(conn, fund_watermark)
 
         eq_n = equity_staging_row_count(conn, d)
-        print(f"validate: {eq_n} equity, {mf_n} MF, {fund_n} fundamentals staging rows landed for {d}")
-        if eq_n == 0 and mf_n == 0 and fund_n == 0:
+        print(f"validate: {eq_n} equity, {fund_n} fundamentals staging rows landed for {d}")
+        if eq_n == 0 and fund_n == 0:
             print(f"No data for {d} (holiday/weekend, or not yet published) — skipping Staging/Main refresh.")
             run["rows"] = 0
         else:
@@ -143,7 +127,7 @@ def main():
             run_step_with_args("compute portfolio health", "mystock.etl.portfolio.compute_portfolio_health", ["--date", str(d)])
             run_step_with_args("compute sector signal", "mystock.etl.main.compute_sector_signal", ["--date", str(d)])
             run_step_with_args("compute daily alert", "mystock.etl.portfolio.compute_daily_alert", ["--date", str(d)])
-            run["rows"] = eq_n + mf_n + fund_n
+            run["rows"] = eq_n + fund_n
 
     conn.close()
     print(f"Daily job complete for {d}.")

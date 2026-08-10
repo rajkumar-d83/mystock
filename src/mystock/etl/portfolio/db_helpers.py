@@ -1,12 +1,5 @@
 """Shared lookups for portfolio import scripts: user/portfolio get-or-create, and
-security/scheme resolution by ISIN or symbol against the existing Main dimensions."""
-import re
-from difflib import SequenceMatcher
-
-
-def _normalize_scheme_name(name):
-    name = re.sub(r"[^A-Z0-9 ]", " ", name.upper())
-    return re.sub(r"\s+", " ", name).strip()
+security resolution by ISIN or symbol against the existing Main dimensions."""
 
 
 def get_or_create_user(conn, username, display_name=None):
@@ -53,40 +46,3 @@ def match_security_by_symbol(conn, symbol):
     with conn.cursor() as cur:
         cur.execute("SELECT security_key, symbol FROM main.dim_security WHERE symbol = %s", (symbol,))
         return cur.fetchone()
-
-
-def match_mf_scheme_by_isin(conn, isin):
-    with conn.cursor() as cur:
-        cur.execute(
-            """SELECT scheme_key, scheme_name FROM main.dim_mf_scheme
-               WHERE scheme_code IN (
-                   SELECT scheme_code FROM staging.mf_scheme_master
-                   WHERE isin_growth = %s OR isin_div_reinv = %s
-               )""",
-            (isin, isin),
-        )
-        return cur.fetchone()
-
-
-def match_mf_scheme_by_name(conn, scheme_name, min_confidence=0.85):
-    """Exact (case-insensitive) match first, then fuzzy match on a normalized
-    (punctuation/whitespace-collapsed) name — broker statements often format the same
-    AMFI scheme name with different dash/space spacing (e.g. 'Fund -Direct Plan-Growth'
-    vs 'Fund - Direct Plan - Growth')."""
-    with conn.cursor() as cur:
-        cur.execute(
-            "SELECT scheme_key, scheme_name FROM main.dim_mf_scheme WHERE lower(scheme_name) = lower(%s)",
-            (scheme_name,),
-        )
-        row = cur.fetchone()
-        if row:
-            return row
-        cur.execute("SELECT scheme_key, scheme_name FROM main.dim_mf_scheme")
-        norm_target = _normalize_scheme_name(scheme_name)
-        best = None
-        best_score = 0.0
-        for scheme_key, candidate_name in cur.fetchall():
-            score = SequenceMatcher(None, norm_target, _normalize_scheme_name(candidate_name)).ratio()
-            if score > best_score:
-                best, best_score = (scheme_key, candidate_name), score
-        return best if best_score >= min_confidence else None

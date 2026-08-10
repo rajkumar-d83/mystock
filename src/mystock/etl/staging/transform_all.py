@@ -16,12 +16,10 @@ TRANSFORMS = [
     "01_equity_master.sql",
     "02_stock_daily_from_stock_history.sql",
     "03_stock_daily_from_bhavcopy.sql",
-    "04_mf_scheme_master.sql",
-    "05_mf_nav_daily.sql",
-    "06_company_fundamentals_snapshot.sql",
-    "07_company_financials.sql",
-    "08_company_dividends.sql",
-    "09_index_daily.sql",
+    "04_company_fundamentals_snapshot.sql",
+    "05_company_financials.sql",
+    "06_company_dividends.sql",
+    "07_index_daily.sql",
 ]
 
 
