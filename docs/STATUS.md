@@ -1,6 +1,6 @@
 # MyStock — Status
 
-Last updated: 2026-08-08
+Last updated: 2026-08-12
 
 ## What's built
 
@@ -37,10 +37,20 @@ at both the application and database-role level. A standalone CLI client
 **RAG** — Product spec + schema metadata embedded locally (`sentence-transformers`,
 all-MiniLM-L6-v2) for semantic search via `search_docs` — no cloud embedding API.
 
-**Automation** — Three scheduled jobs (macOS `launchd`):
+**Institutional ownership tracking** — Quarterly Promoter/FII/DII/public shareholding %
+per currently-held security (~37), parsed from NSE's XBRL corporate filings — no bulk
+feed exists for this, so it's fetched per-company like news, not per the whole universe.
+Handles 3 different XBRL taxonomy versions in use since 2021 and a real inconsistency in
+how filers encode the percentage value (fraction-of-1 vs. already-scaled). Not yet wired
+into the Quality Score.
+
+**Automation** — Four scheduled jobs (macOS `launchd`):
 - **6:00 AM** — morning news fetch + sentiment scoring, ready before market open
 - **19:07** — full daily pipeline (prices, fundamentals snapshot, quality scores, news,
   signals, portfolio value/health, daily alert)
+- **1st of month, 9:00 AM** — shareholding-pattern check (picks up whichever holdings
+  have a new quarterly filing since the last run — idempotent, so a monthly check is
+  enough even though filings land on a quarterly, not monthly, cadence)
 - **Sundays 8:00 AM** — full fundamentals refresh (financial statements, dividends —
   quarterly-static, doesn't need a daily pull)
 
@@ -59,6 +69,12 @@ all-MiniLM-L6-v2) for semantic search via `search_docs` — no cloud embedding A
   real time cost (~15–18hr one-time backfill) and weaker data quality for micro-caps.
 - Single local Postgres instance, single machine, no automated backup — a real
   operational risk if this machine is lost.
+- **Shareholding-pattern history has small real gaps**, not a parsing bug: pre-XBRL-era
+  filings (roughly pre-2021) have no XBRL to fetch at all (404 on the archive link), and
+  occasional NSE timeouts drop a symbol for that run (picked up automatically next
+  month, since the fetch only skips filings it's already successfully stored). Verified
+  clean otherwise — 0 unit-scaling errors, and every parsed row's promoter+public
+  percentages sum to ~100% as a cross-check.
 
 ## Not built (out of scope for now)
 

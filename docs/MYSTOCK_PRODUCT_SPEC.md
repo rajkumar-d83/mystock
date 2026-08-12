@@ -1,6 +1,6 @@
 # MyStock — Product Spec
 
-**Version:** 1.0 (2026-08-04)
+**Version:** 1.1 (2026-08-12)
 **Status:** v1 scope is fully built and describes the system as it actually stands today,
 not aspirationally — every feature, weight, and count in this document was verified against
 the live database while writing it. See §17 for what's explicitly out of v1 scope and
@@ -150,6 +150,7 @@ NSE / Yahoo Finance / Google News
 | Equity prices/volume/delivery | All 2,415 NSE-listed equities, 10-year history | NSE bhavcopy (`jugaad-data`) |
 | Company fundamentals + quality score | NIFTY Total Market, 750 symbols scored | Yahoo Finance (`yfinance`) |
 | Index snapshots | Whole-market daily close | `niftyindices.com` |
+| Institutional ownership (Promoter/FII/DII/public %) | Currently-held securities only (~37), quarterly | NSE corporate filings (XBRL shareholding pattern) |
 | Broker costs | Brokerage/STT/exchange charges/GST/stamp duty, by segment | Broker's published pricing |
 | Portfolio | Multi-user, multi-broker, real imported holdings + trades | Broker export files (Upstox etc.) |
 | News + sentiment | Currently-held stocks only, daily | Google News RSS + local FinBERT |
@@ -171,6 +172,7 @@ The question everything above eventually gets asked: how current is this, actual
 | Portfolio value & health | Daily |
 | Daily alert digest | Daily |
 | Holdings & transactions | On import (manual) |
+| Institutional ownership (Promoter/FII/DII) | Quarterly (as filed — checked monthly) |
 | Broker fee schedule | Manual, on rate change |
 
 Two things "Daily" doesn't mean here:
@@ -307,6 +309,11 @@ management do with it:
   the first (needs repeated snapshots over time, not enough history yet) but the data isn't
   there yet; the latter two need filings/annual-report text no current source provides —
   all three excluded from the average rather than scored as if absent were bad
+  (real NSE promoter/institutional data now exists via `main.fact_shareholding_pattern`
+  §10, precise enough to replace both proxies and finally compute `institutional_trend` —
+  but only for the ~37 currently-held securities, not the 750-symbol scored universe, so
+  it isn't wired into scoring yet; would need a real decision on how to handle the
+  asymmetric coverage first, not assumed away)
 
 **Valuation (5%)** — deliberately the smallest weight: a great business at a fair price beats
 a mediocre one that's merely cheap, so this discourages screening on cheapness alone:
@@ -359,6 +366,15 @@ that comparable.
   (`portfolio.daily_alert`). Delivery is query-based, not a push notification, by design.
 - **Cost modeling** — brokerage/STT/exchange charges (by broker/segment), so "what does
   this actually cost me" is answerable, not estimated.
+- **Institutional ownership tracking** — quarterly Promoter/FII/DII/public shareholding %
+  per currently-held security, parsed directly from NSE's XBRL corporate filings (no
+  bulk/whole-market feed exists for this, unlike bhavcopy — one filing per company per
+  quarter, so scoped to holdings like the news feed rather than the whole universe).
+  Verified against real filings across all three of NSE's XBRL taxonomy versions in use
+  since 2021 (context-ID naming differs slightly across versions, including an NSE-side
+  typo — "Catergory" — in the oldest one) and a real cross-filer inconsistency in how the
+  percentage value itself is encoded (fraction-of-1 vs. already-scaled percentage, with
+  no metadata to distinguish them) — both handled, not just assumed away.
 
 ## 11. AI/ML Components — local-first
 
@@ -438,6 +454,7 @@ incidents from this project's own build history, not guesses at what might go wr
 | NSE bhavcopy fetch throttled/blocked | Yes — recurring, has a known signature (high wall-clock time, near-zero CPU, empty-message failures) | Pause and resume by hand when the pattern is spotted | **Partial** — no automated backoff/retry yet |
 | Yahoo Finance changes format or blocks scripted access | Not yet | None | **Unmitigated** — single source for fundamentals, no fallback provider |
 | Google News RSS changes format or blocks access | Not yet | None | **Unmitigated** — single source for news, no fallback feed |
+| NSE shareholding-pattern API/XBRL changes format or blocks scripted access | Yes — the XBRL taxonomy itself has already changed at least 3 times since 2021 (different context-ID naming conventions per version, including an NSE-side typo — "Catergory" — preserved in one version), and the percentage value is encoded inconsistently across filers (fraction-of-1 vs. already-scaled, no metadata to tell them apart) | Context-ID matching is suffix-stripped rather than hardcoded to one taxonomy version; value scale is inferred (nothing legitimate exceeds 100%, so >1 unambiguously means "already a percentage") | **Built**, verified against real filings spanning all 3 taxonomy versions |
 | Broker export misread (wrong column meaning, duplicate account, bad symbol match) | Yes — three real cases in one session: a "Rate" column misread as cost basis instead of market price, the same account imported twice as two "portfolios," and 5 trades fuzzy-matched to the wrong ticker on a coincidental substring | ISIN matching preferred over fuzzy name matching wherever possible; uncertain trade matches held in a staging/review table, never auto-promoted; a reconciliation check (holdings vs. trade netting) before trusting new data; unique-constraint dedup added to every import script after the duplicate-import incident | **Built**, proven against real data |
 | Missing fundamentals data | N/A — design decision | A missing sub-metric is excluded from its category average, never scored as zero | **Built** |
 | `main.dim_date` extends years into the future (it's a pre-populated calendar dimension) | Yes — silently made the sector signal compute zero rows, because `max(full_date)` grabbed a future date instead of the latest *priced* date | Fixed at the one spot found (join against `fact_daily_prices` for the true latest date) | **Partial** — no lint/check yet to catch the same mistake recurring elsewhere |
@@ -461,6 +478,13 @@ cost modeling, MCP server, local-first RAG + FinBERT. Everything described as
 "built" in this document is built and was verified against the live database while
 writing it — v1 is a snapshot of reality, not a plan.
 
+**v1.1 (2026-08-12)** — quarterly Promoter/FII/DII/public shareholding-pattern tracking
+added, scoped to currently-held securities (~37), parsed directly from NSE's XBRL
+corporate filings (no existing library supports this — built from NSE's raw API +
+XBRL). See §10 Core Features and §15 Risk Register for what real-filing testing turned up
+(3 taxonomy versions in use since 2021, inconsistent percentage-value scaling across
+filers). Not yet integrated into the Quality Score's Governance category — see §9.
+
 **v2 (proposed, not started)** — a dedicated **Research Engine**: the shift from "track
 what I own" to "research what I might buy." Assessed by real feasibility, not just
 listed:
@@ -474,8 +498,7 @@ listed:
   financials are already fetched, needs a QoQ/YoY comparison layer), **Corporate
   actions** (a real gap surfaced directly by the Tata Motors demerger this session).
 - *Real effort, no free clean data source* — needs a real scraping project or a paid
-  source, decide deliberately before starting: **FII/DII ownership**
-  (quarterly shareholding filings, not currently sourced), **annual report embeddings** (a
+  source, decide deliberately before starting: **annual report embeddings** (a
   genuine new subsystem — PDF sourcing, parsing, chunking, embedding — but the highest-value
   option for the "moat"/governance metrics currently marked not-computable).
 - *Likely conflicts with a Design Principle* — flag before building, don't default into

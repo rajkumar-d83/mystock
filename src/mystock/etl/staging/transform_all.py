@@ -20,6 +20,7 @@ TRANSFORMS = [
     "05_company_financials.sql",
     "06_company_dividends.sql",
     "07_index_daily.sql",
+    "08_shareholding_pattern.sql",
 ]
 
 

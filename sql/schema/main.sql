@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict tVrh9OGneAk4gB8ow1d4W9Qlq7dPCf6eQ7pc3GA22MW286JniZc1g7NvwCYlPce
+\restrict kDEoURRaarZbxyNY5jg58l3Ji4KqLke2hHT8JAcCHNAtglkFadauHuVQx1djtwh
 
 -- Dumped from database version 18.4 (Homebrew)
 -- Dumped by pg_dump version 18.4 (Homebrew)
@@ -442,6 +442,27 @@ CREATE TABLE main.fact_sector_signal (
 ALTER TABLE main.fact_sector_signal OWNER TO raj;
 
 --
+-- Name: fact_shareholding_pattern; Type: TABLE; Schema: main; Owner: raj
+--
+
+CREATE TABLE main.fact_shareholding_pattern (
+    security_key integer NOT NULL,
+    date_key integer NOT NULL,
+    promoter_pct numeric(6,3),
+    public_pct numeric(6,3),
+    institutions_domestic_pct numeric(6,3),
+    institutions_foreign_pct numeric(6,3),
+    non_institutions_pct numeric(6,3),
+    mutual_funds_pct numeric(6,3),
+    insurance_pct numeric(6,3),
+    fpi_category_1_pct numeric(6,3),
+    fpi_category_2_pct numeric(6,3)
+);
+
+
+ALTER TABLE main.fact_shareholding_pattern OWNER TO raj;
+
+--
 -- Name: fact_stock_quality_metric; Type: TABLE; Schema: main; Owner: raj
 --
 
@@ -729,6 +750,14 @@ ALTER TABLE ONLY main.fact_sector_signal
 
 
 --
+-- Name: fact_shareholding_pattern fact_shareholding_pattern_pkey; Type: CONSTRAINT; Schema: main; Owner: raj
+--
+
+ALTER TABLE ONLY main.fact_shareholding_pattern
+    ADD CONSTRAINT fact_shareholding_pattern_pkey PRIMARY KEY (security_key, date_key);
+
+
+--
 -- Name: fact_stock_quality_metric fact_stock_quality_metric_pkey; Type: CONSTRAINT; Schema: main; Owner: raj
 --
 
@@ -1001,6 +1030,22 @@ ALTER TABLE ONLY main.fact_sector_signal
 
 
 --
+-- Name: fact_shareholding_pattern fact_shareholding_pattern_date_key_fkey; Type: FK CONSTRAINT; Schema: main; Owner: raj
+--
+
+ALTER TABLE ONLY main.fact_shareholding_pattern
+    ADD CONSTRAINT fact_shareholding_pattern_date_key_fkey FOREIGN KEY (date_key) REFERENCES main.dim_date(date_key);
+
+
+--
+-- Name: fact_shareholding_pattern fact_shareholding_pattern_security_key_fkey; Type: FK CONSTRAINT; Schema: main; Owner: raj
+--
+
+ALTER TABLE ONLY main.fact_shareholding_pattern
+    ADD CONSTRAINT fact_shareholding_pattern_security_key_fkey FOREIGN KEY (security_key) REFERENCES main.dim_security(security_key);
+
+
+--
 -- Name: fact_stock_quality_metric fact_stock_quality_metric_score_date_key_fkey; Type: FK CONSTRAINT; Schema: main; Owner: raj
 --
 
@@ -1176,6 +1221,13 @@ GRANT SELECT ON TABLE main.fact_sector_signal TO mcp_reader;
 
 
 --
+-- Name: TABLE fact_shareholding_pattern; Type: ACL; Schema: main; Owner: raj
+--
+
+GRANT SELECT ON TABLE main.fact_shareholding_pattern TO mcp_reader;
+
+
+--
 -- Name: TABLE fact_stock_quality_metric; Type: ACL; Schema: main; Owner: raj
 --
 
@@ -1207,5 +1259,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE raj IN SCHEMA main GRANT SELECT ON TABLES TO m
 -- PostgreSQL database dump complete
 --
 
-\unrestrict tVrh9OGneAk4gB8ow1d4W9Qlq7dPCf6eQ7pc3GA22MW286JniZc1g7NvwCYlPce
+\unrestrict kDEoURRaarZbxyNY5jg58l3Ji4KqLke2hHT8JAcCHNAtglkFadauHuVQx1djtwh
 

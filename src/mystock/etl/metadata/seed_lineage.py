@@ -63,6 +63,10 @@ LINEAGE = [
      "src/mystock/etl/main/compute_news_price_signal.py", "Also reads staging.news_sentiment."),
     ("main", "fact_sector_signal", "main", "fact_daily_prices",
      "src/mystock/etl/main/compute_sector_signal.py", None),
+    ("staging", "shareholding_pattern", "staging", "nse_shareholding_raw",
+     "src/mystock/etl/staging/sql/08_shareholding_pattern.sql", "Source: NSE corporate filings (XBRL), currently-held securities only."),
+    ("main", "fact_shareholding_pattern", "staging", "shareholding_pattern",
+     "src/mystock/etl/main/sql/11_fact_shareholding_pattern.sql", None),
 ]
 
 

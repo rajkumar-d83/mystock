@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict od2E8nOlh1NHcEdkb5CA5OneWgV7HJkuPoDUKgN3KKqMxDdwLDi5cGCBB5eTq1c
+\restrict Il6NMjFFxfxgF1FL1ByhFRWKS4XotcTVbmrSvahYCcKZdAcuS6wldQfsF5nf6mk
 
 -- Dumped from database version 18.4 (Homebrew)
 -- Dumped by pg_dump version 18.4 (Homebrew)
@@ -390,6 +390,22 @@ ALTER SEQUENCE staging.nse_indices_bhavcopy_raw_id_seq OWNED BY staging.nse_indi
 
 
 --
+-- Name: nse_shareholding_raw; Type: TABLE; Schema: staging; Owner: raj
+--
+
+CREATE TABLE staging.nse_shareholding_raw (
+    symbol text NOT NULL,
+    period_end_date date NOT NULL,
+    raw_payload jsonb NOT NULL,
+    submission_date date,
+    batch_id uuid NOT NULL,
+    fetched_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE staging.nse_shareholding_raw OWNER TO raj;
+
+--
 -- Name: nse_stock_history_raw; Type: TABLE; Schema: staging; Owner: raj
 --
 
@@ -441,6 +457,28 @@ CREATE TABLE staging.sector_map (
 
 
 ALTER TABLE staging.sector_map OWNER TO raj;
+
+--
+-- Name: shareholding_pattern; Type: TABLE; Schema: staging; Owner: raj
+--
+
+CREATE TABLE staging.shareholding_pattern (
+    symbol text NOT NULL,
+    period_end_date date NOT NULL,
+    promoter_pct numeric(6,3),
+    public_pct numeric(6,3),
+    institutions_domestic_pct numeric(6,3),
+    institutions_foreign_pct numeric(6,3),
+    non_institutions_pct numeric(6,3),
+    mutual_funds_pct numeric(6,3),
+    insurance_pct numeric(6,3),
+    fpi_category_1_pct numeric(6,3),
+    fpi_category_2_pct numeric(6,3),
+    loaded_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE staging.shareholding_pattern OWNER TO raj;
 
 --
 -- Name: stock_daily; Type: TABLE; Schema: staging; Owner: raj
@@ -686,6 +724,14 @@ ALTER TABLE ONLY staging.nse_indices_bhavcopy_raw
 
 
 --
+-- Name: nse_shareholding_raw nse_shareholding_raw_pkey; Type: CONSTRAINT; Schema: staging; Owner: raj
+--
+
+ALTER TABLE ONLY staging.nse_shareholding_raw
+    ADD CONSTRAINT nse_shareholding_raw_pkey PRIMARY KEY (symbol, period_end_date);
+
+
+--
 -- Name: nse_stock_history_raw nse_stock_history_raw_pkey; Type: CONSTRAINT; Schema: staging; Owner: raj
 --
 
@@ -707,6 +753,14 @@ ALTER TABLE ONLY staging.nse_stock_history_raw
 
 ALTER TABLE ONLY staging.sector_map
     ADD CONSTRAINT sector_map_pkey PRIMARY KEY (symbol);
+
+
+--
+-- Name: shareholding_pattern shareholding_pattern_pkey; Type: CONSTRAINT; Schema: staging; Owner: raj
+--
+
+ALTER TABLE ONLY staging.shareholding_pattern
+    ADD CONSTRAINT shareholding_pattern_pkey PRIMARY KEY (symbol, period_end_date);
 
 
 --
@@ -921,6 +975,13 @@ GRANT SELECT ON TABLE staging.nse_indices_bhavcopy_raw TO mcp_reader;
 
 
 --
+-- Name: TABLE nse_shareholding_raw; Type: ACL; Schema: staging; Owner: raj
+--
+
+GRANT SELECT ON TABLE staging.nse_shareholding_raw TO mcp_reader;
+
+
+--
 -- Name: TABLE nse_stock_history_raw; Type: ACL; Schema: staging; Owner: raj
 --
 
@@ -932,6 +993,13 @@ GRANT SELECT ON TABLE staging.nse_stock_history_raw TO mcp_reader;
 --
 
 GRANT SELECT ON TABLE staging.sector_map TO mcp_reader;
+
+
+--
+-- Name: TABLE shareholding_pattern; Type: ACL; Schema: staging; Owner: raj
+--
+
+GRANT SELECT ON TABLE staging.shareholding_pattern TO mcp_reader;
 
 
 --
@@ -973,5 +1041,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE raj IN SCHEMA staging GRANT SELECT ON TABLES T
 -- PostgreSQL database dump complete
 --
 
-\unrestrict od2E8nOlh1NHcEdkb5CA5OneWgV7HJkuPoDUKgN3KKqMxDdwLDi5cGCBB5eTq1c
+\unrestrict Il6NMjFFxfxgF1FL1ByhFRWKS4XotcTVbmrSvahYCcKZdAcuS6wldQfsF5nf6mk
 

@@ -22,6 +22,7 @@ LOADS = [
     "08_fact_company_dividends.sql",
     "09_dim_index.sql",
     "10_fact_index_daily.sql",
+    "11_fact_shareholding_pattern.sql",
 ]
 
 
