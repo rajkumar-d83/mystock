@@ -152,6 +152,7 @@ NSE / Yahoo Finance / Google News
 | Index snapshots | Whole-market daily close | `niftyindices.com` |
 | Institutional ownership (Promoter/FII/DII/public %) | Currently-held securities only (~37), quarterly | NSE corporate filings (XBRL shareholding pattern) |
 | Broker costs | Brokerage/STT/exchange charges/GST/stamp duty, by segment | Broker's published pricing |
+| MTF (leveraged) positions | Open/closed positions, slab-rate daily interest, per broker/plan | Manually recorded (no automated feed — see §10) |
 | Portfolio | Multi-user, multi-broker, real imported holdings + trades | Broker export files (Upstox etc.) |
 | News + sentiment | Currently-held stocks only, daily | Google News RSS + local FinBERT |
 
@@ -346,6 +347,16 @@ that comparable.
 - **Portfolio tracking** — real holdings imported from broker exports (ISIN-matched for
   reliability), daily value/cost-basis/P&L snapshot, and a holdings-weighted rollup of the
   quality score as a portfolio "health" number.
+- **MTF (leveraged position) tracking** — kept deliberately separate from
+  `portfolio.transactions`/portfolio value (an MTF position is partly broker-funded, not
+  owned equity; folding it into overall portfolio value would overstate net worth by the
+  loan). Daily snapshot per open position: value, interest accrued against the broker's
+  actual marginal slab-rate table (not one flat rate — e.g. Upstox Plus charges a cheaper
+  rate on the first Rs 1,00,000 borrowed, then the Basic rate above that), effective
+  leverage (current equity, not entry equity — correctly rises as price falls against the
+  position), break-even price, and days left before a broker's forced square-off deadline.
+  No automated feed exists for this (broker holdings exports only show settled DP
+  holdings, not open MTF positions) — recorded via a small CLI import script.
 - **Multibagger screener** — a SQL screen over quality score + revenue/earnings CAGR +
   valuation + market-cap bucket, to surface small/mid-cap candidates with real growth at a
   reasonable price. Validated against the expanded universe: surfaced 2 candidates

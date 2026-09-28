@@ -71,7 +71,27 @@ def sector_signals(conn, portfolio_id, target_date):
         return cur.fetchall()
 
 
-def build_summary(portfolio_name, value, change_abs, change_pct, stocks, sectors):
+def mtf_risk_flags(conn, portfolio_id, target_date):
+    """Flags open MTF positions approaching the 366-day forced square-off, or where
+    equity has fallen below 20% of position value (effective_leverage > 5x) -- a
+    threshold we chose, not a broker-stated margin-call rule; adjust in this function if
+    Upstox's actual policy is tighter or looser than this."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """SELECT ds.symbol, f.days_to_forced_squareoff, f.effective_leverage, f.unrealized_pnl_net
+               FROM portfolio.fact_mtf_position_daily f
+               JOIN portfolio.mtf_positions p ON p.mtf_position_id = f.mtf_position_id
+               JOIN main.dim_security ds ON ds.security_key = p.security_key
+               JOIN main.dim_date dd ON dd.date_key = f.date_key
+               WHERE p.portfolio_id = %s AND p.status = 'open' AND dd.full_date = %s
+                 AND (f.days_to_forced_squareoff <= 30
+                      OR (f.effective_leverage IS NOT NULL AND f.effective_leverage > 5))""",
+            (portfolio_id, target_date),
+        )
+        return cur.fetchall()
+
+
+def build_summary(portfolio_name, value, change_abs, change_pct, stocks, sectors, mtf_flags=None):
     parts = []
     if value is not None:
         direction = "+" if change_abs >= 0 else ""
@@ -93,6 +113,17 @@ def build_summary(portfolio_name, value, change_abs, change_pct, stocks, sectors
         parts.append(f"{len(sectors)} sector(s) flagged: " + "; ".join(sector_bits))
     else:
         parts.append("No sector-wide moves flagged today")
+
+    if mtf_flags:
+        mtf_bits = []
+        for sym, days_left, leverage, pnl_net in mtf_flags:
+            reasons = []
+            if days_left is not None and days_left <= 30:
+                reasons.append(f"{days_left}d to forced square-off")
+            if leverage is not None and leverage > 5:
+                reasons.append(f"leverage {leverage:.1f}x")
+            mtf_bits.append(f"{sym} ({', '.join(reasons)}, net P&L Rs {pnl_net:,.0f})")
+        parts.append(f"MTF risk: " + "; ".join(mtf_bits))
 
     return " | ".join(parts)
 
@@ -134,7 +165,8 @@ def main():
         value, change_abs, change_pct = portfolio_value_change(conn, portfolio_id, args.date)
         stocks = stock_signals(conn, portfolio_id, args.date)
         sectors = sector_signals(conn, portfolio_id, args.date)
-        summary = build_summary(name, value, change_abs, change_pct, stocks, sectors)
+        mtf_flags = mtf_risk_flags(conn, portfolio_id, args.date)
+        summary = build_summary(name, value, change_abs, change_pct, stocks, sectors, mtf_flags)
         write_alert(conn, portfolio_id, args.date, change_abs, change_pct, len(stocks), len(sectors), summary)
         print(f"[{args.date}] {summary}")
 

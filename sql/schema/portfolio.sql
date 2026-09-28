@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 3stKct8cDsnWcdQVeUNYejjd6JXiF1TC3ZDKPQ6VDJLPin6xXjAVXX0THfi9Iv7
+\restrict 6xtX7gtVySeboKv4nk2H5x0YuasDHl2CecwO7xK9Ru7SMR7jzUfiSMvKmHwhQjq
 
 -- Dumped from database version 18.4 (Homebrew)
 -- Dumped by pg_dump version 18.4 (Homebrew)
@@ -99,6 +99,28 @@ CREATE TABLE portfolio.daily_alert (
 ALTER TABLE portfolio.daily_alert OWNER TO raj;
 
 --
+-- Name: fact_mtf_position_daily; Type: TABLE; Schema: portfolio; Owner: raj
+--
+
+CREATE TABLE portfolio.fact_mtf_position_daily (
+    mtf_position_id integer NOT NULL,
+    date_key integer NOT NULL,
+    current_price numeric,
+    current_value numeric,
+    days_held integer NOT NULL,
+    daily_interest numeric,
+    cumulative_interest numeric,
+    effective_leverage numeric,
+    unrealized_pnl_gross numeric,
+    unrealized_pnl_net numeric,
+    break_even_price numeric,
+    days_to_forced_squareoff integer
+);
+
+
+ALTER TABLE portfolio.fact_mtf_position_daily OWNER TO raj;
+
+--
 -- Name: fact_portfolio_health; Type: TABLE; Schema: portfolio; Owner: raj
 --
 
@@ -184,6 +206,106 @@ ALTER SEQUENCE portfolio.import_staging_trades_staging_id_seq OWNER TO raj;
 --
 
 ALTER SEQUENCE portfolio.import_staging_trades_staging_id_seq OWNED BY portfolio.import_staging_trades.staging_id;
+
+
+--
+-- Name: mtf_interest_slabs; Type: TABLE; Schema: portfolio; Owner: raj
+--
+
+CREATE TABLE portfolio.mtf_interest_slabs (
+    slab_id integer NOT NULL,
+    broker text NOT NULL,
+    plan text NOT NULL,
+    min_borrowed numeric(14,2) DEFAULT 0 NOT NULL,
+    max_borrowed numeric(14,2),
+    charge_amount numeric(10,2) NOT NULL,
+    per_amount numeric(14,2) NOT NULL,
+    effective_from date NOT NULL,
+    effective_to date,
+    source_url text,
+    notes text,
+    loaded_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT mtf_interest_slabs_check CHECK (((max_borrowed IS NULL) OR (max_borrowed > min_borrowed))),
+    CONSTRAINT mtf_interest_slabs_per_amount_check CHECK ((per_amount > (0)::numeric))
+);
+
+
+ALTER TABLE portfolio.mtf_interest_slabs OWNER TO raj;
+
+--
+-- Name: mtf_interest_slabs_slab_id_seq; Type: SEQUENCE; Schema: portfolio; Owner: raj
+--
+
+CREATE SEQUENCE portfolio.mtf_interest_slabs_slab_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE portfolio.mtf_interest_slabs_slab_id_seq OWNER TO raj;
+
+--
+-- Name: mtf_interest_slabs_slab_id_seq; Type: SEQUENCE OWNED BY; Schema: portfolio; Owner: raj
+--
+
+ALTER SEQUENCE portfolio.mtf_interest_slabs_slab_id_seq OWNED BY portfolio.mtf_interest_slabs.slab_id;
+
+
+--
+-- Name: mtf_positions; Type: TABLE; Schema: portfolio; Owner: raj
+--
+
+CREATE TABLE portfolio.mtf_positions (
+    mtf_position_id integer NOT NULL,
+    portfolio_id integer NOT NULL,
+    security_key integer NOT NULL,
+    broker text NOT NULL,
+    plan text NOT NULL,
+    open_date date NOT NULL,
+    quantity numeric NOT NULL,
+    buy_price numeric NOT NULL,
+    own_amount numeric NOT NULL,
+    borrowed_amount numeric NOT NULL,
+    status text DEFAULT 'open'::text NOT NULL,
+    close_date date,
+    close_price numeric,
+    source_file text,
+    notes text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT mtf_positions_borrowed_amount_check CHECK ((borrowed_amount >= (0)::numeric)),
+    CONSTRAINT mtf_positions_buy_price_check CHECK ((buy_price >= (0)::numeric)),
+    CONSTRAINT mtf_positions_check CHECK ((abs(((own_amount + borrowed_amount) - (quantity * buy_price))) < 1.0)),
+    CONSTRAINT mtf_positions_own_amount_check CHECK ((own_amount >= (0)::numeric)),
+    CONSTRAINT mtf_positions_quantity_check CHECK ((quantity > (0)::numeric)),
+    CONSTRAINT mtf_positions_status_check CHECK ((status = ANY (ARRAY['open'::text, 'closed'::text, 'squared_off'::text])))
+);
+
+
+ALTER TABLE portfolio.mtf_positions OWNER TO raj;
+
+--
+-- Name: mtf_positions_mtf_position_id_seq; Type: SEQUENCE; Schema: portfolio; Owner: raj
+--
+
+CREATE SEQUENCE portfolio.mtf_positions_mtf_position_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE portfolio.mtf_positions_mtf_position_id_seq OWNER TO raj;
+
+--
+-- Name: mtf_positions_mtf_position_id_seq; Type: SEQUENCE OWNED BY; Schema: portfolio; Owner: raj
+--
+
+ALTER SEQUENCE portfolio.mtf_positions_mtf_position_id_seq OWNED BY portfolio.mtf_positions.mtf_position_id;
 
 
 --
@@ -320,6 +442,20 @@ ALTER TABLE ONLY portfolio.import_staging_trades ALTER COLUMN staging_id SET DEF
 
 
 --
+-- Name: mtf_interest_slabs slab_id; Type: DEFAULT; Schema: portfolio; Owner: raj
+--
+
+ALTER TABLE ONLY portfolio.mtf_interest_slabs ALTER COLUMN slab_id SET DEFAULT nextval('portfolio.mtf_interest_slabs_slab_id_seq'::regclass);
+
+
+--
+-- Name: mtf_positions mtf_position_id; Type: DEFAULT; Schema: portfolio; Owner: raj
+--
+
+ALTER TABLE ONLY portfolio.mtf_positions ALTER COLUMN mtf_position_id SET DEFAULT nextval('portfolio.mtf_positions_mtf_position_id_seq'::regclass);
+
+
+--
 -- Name: portfolios portfolio_id; Type: DEFAULT; Schema: portfolio; Owner: raj
 --
 
@@ -357,6 +493,14 @@ ALTER TABLE ONLY portfolio.daily_alert
 
 
 --
+-- Name: fact_mtf_position_daily fact_mtf_position_daily_pkey; Type: CONSTRAINT; Schema: portfolio; Owner: raj
+--
+
+ALTER TABLE ONLY portfolio.fact_mtf_position_daily
+    ADD CONSTRAINT fact_mtf_position_daily_pkey PRIMARY KEY (mtf_position_id, date_key);
+
+
+--
 -- Name: fact_portfolio_health fact_portfolio_health_pkey; Type: CONSTRAINT; Schema: portfolio; Owner: raj
 --
 
@@ -378,6 +522,22 @@ ALTER TABLE ONLY portfolio.fact_portfolio_value_daily
 
 ALTER TABLE ONLY portfolio.import_staging_trades
     ADD CONSTRAINT import_staging_trades_pkey PRIMARY KEY (staging_id);
+
+
+--
+-- Name: mtf_interest_slabs mtf_interest_slabs_pkey; Type: CONSTRAINT; Schema: portfolio; Owner: raj
+--
+
+ALTER TABLE ONLY portfolio.mtf_interest_slabs
+    ADD CONSTRAINT mtf_interest_slabs_pkey PRIMARY KEY (slab_id);
+
+
+--
+-- Name: mtf_positions mtf_positions_pkey; Type: CONSTRAINT; Schema: portfolio; Owner: raj
+--
+
+ALTER TABLE ONLY portfolio.mtf_positions
+    ADD CONSTRAINT mtf_positions_pkey PRIMARY KEY (mtf_position_id);
 
 
 --
@@ -479,6 +639,22 @@ ALTER TABLE ONLY portfolio.daily_alert
 
 
 --
+-- Name: fact_mtf_position_daily fact_mtf_position_daily_date_key_fkey; Type: FK CONSTRAINT; Schema: portfolio; Owner: raj
+--
+
+ALTER TABLE ONLY portfolio.fact_mtf_position_daily
+    ADD CONSTRAINT fact_mtf_position_daily_date_key_fkey FOREIGN KEY (date_key) REFERENCES main.dim_date(date_key);
+
+
+--
+-- Name: fact_mtf_position_daily fact_mtf_position_daily_mtf_position_id_fkey; Type: FK CONSTRAINT; Schema: portfolio; Owner: raj
+--
+
+ALTER TABLE ONLY portfolio.fact_mtf_position_daily
+    ADD CONSTRAINT fact_mtf_position_daily_mtf_position_id_fkey FOREIGN KEY (mtf_position_id) REFERENCES portfolio.mtf_positions(mtf_position_id);
+
+
+--
 -- Name: fact_portfolio_health fact_portfolio_health_date_key_fkey; Type: FK CONSTRAINT; Schema: portfolio; Owner: raj
 --
 
@@ -527,6 +703,22 @@ ALTER TABLE ONLY portfolio.import_staging_trades
 
 
 --
+-- Name: mtf_positions mtf_positions_portfolio_id_fkey; Type: FK CONSTRAINT; Schema: portfolio; Owner: raj
+--
+
+ALTER TABLE ONLY portfolio.mtf_positions
+    ADD CONSTRAINT mtf_positions_portfolio_id_fkey FOREIGN KEY (portfolio_id) REFERENCES portfolio.portfolios(portfolio_id);
+
+
+--
+-- Name: mtf_positions mtf_positions_security_key_fkey; Type: FK CONSTRAINT; Schema: portfolio; Owner: raj
+--
+
+ALTER TABLE ONLY portfolio.mtf_positions
+    ADD CONSTRAINT mtf_positions_security_key_fkey FOREIGN KEY (security_key) REFERENCES main.dim_security(security_key);
+
+
+--
 -- Name: portfolios portfolios_user_id_fkey; Type: FK CONSTRAINT; Schema: portfolio; Owner: raj
 --
 
@@ -572,6 +764,13 @@ GRANT SELECT ON TABLE portfolio.daily_alert TO mcp_reader;
 
 
 --
+-- Name: TABLE fact_mtf_position_daily; Type: ACL; Schema: portfolio; Owner: raj
+--
+
+GRANT SELECT ON TABLE portfolio.fact_mtf_position_daily TO mcp_reader;
+
+
+--
 -- Name: TABLE fact_portfolio_health; Type: ACL; Schema: portfolio; Owner: raj
 --
 
@@ -590,6 +789,20 @@ GRANT SELECT ON TABLE portfolio.fact_portfolio_value_daily TO mcp_reader;
 --
 
 GRANT SELECT ON TABLE portfolio.import_staging_trades TO mcp_reader;
+
+
+--
+-- Name: TABLE mtf_interest_slabs; Type: ACL; Schema: portfolio; Owner: raj
+--
+
+GRANT SELECT ON TABLE portfolio.mtf_interest_slabs TO mcp_reader;
+
+
+--
+-- Name: TABLE mtf_positions; Type: ACL; Schema: portfolio; Owner: raj
+--
+
+GRANT SELECT ON TABLE portfolio.mtf_positions TO mcp_reader;
 
 
 --
@@ -624,5 +837,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE raj IN SCHEMA portfolio GRANT SELECT ON TABLES
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 3stKct8cDsnWcdQVeUNYejjd6JXiF1TC3ZDKPQ6VDJLPin6xXjAVXX0THfi9Iv7
+\unrestrict 6xtX7gtVySeboKv4nk2H5x0YuasDHl2CecwO7xK9Ru7SMR7jzUfiSMvKmHwhQjq
 

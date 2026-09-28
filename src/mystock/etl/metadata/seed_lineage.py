@@ -65,6 +65,8 @@ LINEAGE = [
      "src/mystock/etl/main/compute_sector_signal.py", None),
     ("staging", "shareholding_pattern", "staging", "nse_shareholding_raw",
      "src/mystock/etl/staging/sql/08_shareholding_pattern.sql", "Source: NSE corporate filings (XBRL), currently-held securities only."),
+    ("portfolio", "fact_mtf_position_daily", "portfolio", "mtf_positions",
+     "src/mystock/etl/portfolio/compute_mtf_interest.py", "Also reads main.fact_daily_prices, portfolio.mtf_interest_slabs, portfolio.broker_fee_schedule."),
     ("main", "fact_shareholding_pattern", "staging", "shareholding_pattern",
      "src/mystock/etl/main/sql/11_fact_shareholding_pattern.sql", None),
 ]

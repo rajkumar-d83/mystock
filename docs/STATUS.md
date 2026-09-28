@@ -21,6 +21,13 @@ preferred over fuzzy name matching), daily value/cost-basis/P&L snapshot, and a
 holdings-weighted "health" rollup of the quality score. Uncertain trade matches are held
 in a review table, never auto-promoted.
 
+**MTF (leveraged position) tracking** — Recorded separately from regular holdings, since
+part of the position is borrowed money. Daily snapshot per open position: interest
+accrued against the broker's real slab-rate table, effective leverage, break-even price,
+days left before forced square-off. The daily alert flags a position within 30 days of
+forced square-off or with equity below 20% of position value. Manually entered (no
+broker feed exists for open MTF positions) via a CLI import script.
+
 **News sentiment + signals** — Daily headlines for currently-held stocks (Google News
 RSS), scored locally with FinBERT. Price/sentiment signal flags abnormal moves (z-score
 vs. trailing 20-day history) and checks whether news corroborates them. Sector-level

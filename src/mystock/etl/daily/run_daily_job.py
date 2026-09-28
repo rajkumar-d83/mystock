@@ -131,6 +131,7 @@ def main():
                 run_step_with_args("compute news/price signal", "mystock.etl.main.compute_news_price_signal", ["--date", str(d)])
             run_step_with_args("compute portfolio value history", "mystock.etl.portfolio.compute_portfolio_value_history", ["--date", str(d)])
             run_step_with_args("compute portfolio health", "mystock.etl.portfolio.compute_portfolio_health", ["--date", str(d)])
+            run_step_with_args("compute mtf interest", "mystock.etl.portfolio.compute_mtf_interest", ["--date", str(d)])
             run_step_with_args("compute sector signal", "mystock.etl.main.compute_sector_signal", ["--date", str(d)])
             run_step_with_args("compute daily alert", "mystock.etl.portfolio.compute_daily_alert", ["--date", str(d)])
             run["rows"] = eq_n + fund_n

@@ -58,6 +58,9 @@ TABLE_DESCRIPTIONS = {
     ("portfolio", "fact_portfolio_health"): "Daily weighted quality-score rollup + concentration metrics (top holding/sector %, score coverage %) per portfolio.",
     ("portfolio", "daily_alert"): "One human-readable daily digest per portfolio: value change, flagged stock/sector signals, plain-English summary — see compute_daily_alert.py.",
     ("portfolio", "broker_fee_schedule"): "Brokerage/fee rates used when computing realized P&L on sells.",
+    ("portfolio", "mtf_interest_slabs"): "MTF (Margin Trade Facility) interest rate table — marginal slab rates per broker/plan (e.g. Rs 20/day per Rs 40,000 borrowed), not one flat rate. See mtf_interest.py.",
+    ("portfolio", "mtf_positions"): "One row per MTF (leveraged) position, open or closed — kept separate from portfolio.transactions since part of the position is broker-funded, not owned equity.",
+    ("portfolio", "fact_mtf_position_daily"): "Daily snapshot per open MTF position: value, interest accrued, effective leverage, P&L net of interest/fees, break-even price, days to Upstox's 366-day forced square-off.",
 }
 
 COLUMN_DESCRIPTIONS = {
