@@ -52,11 +52,16 @@ Usage:
 import argparse
 import subprocess
 import sys
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from mystock.db import get_conn, etl_run
 
 PYTHON = sys.executable
+
+# Price feeds are fetched for a trailing window, not just the run date: already-loaded dates are
+# skipped (no download) and stale/holiday files are rejected by the loader, so this is cheap and
+# self-heals runs the Mac slept through or days NSE hadn't published yet at 19:07.
+CATCH_UP_DAYS = 7
 
 
 def parse_date(s):
@@ -99,8 +104,9 @@ def main():
 
     conn = get_conn()
     with etl_run("daily_job", {"date": str(d)}) as run:
-        run_step_with_args("fetch equity bhavcopy", "mystock.etl.daily.fetch_daily_bhavcopy", ["--date", str(d)])
-        run_step_with_args("fetch indices bhavcopy", "mystock.etl.daily.fetch_indices_bhavcopy", ["--date", str(d)])
+        window = ["--from-date", str(d - timedelta(days=CATCH_UP_DAYS)), "--to-date", str(d)]
+        run_step_with_args("fetch equity bhavcopy", "mystock.etl.daily.fetch_daily_bhavcopy", window)
+        run_step_with_args("fetch indices bhavcopy", "mystock.etl.daily.fetch_indices_bhavcopy", window)
 
         is_today_run = d == date.today()
         fund_n = 0
